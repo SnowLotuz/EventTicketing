@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="24dp"
+    android:background="@color/white">
+
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="12dp"
+        android:background="@color/slate_200" />
+
+    <TextView
+        android:id="@+id/tv_sheet_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/slate_900"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        tools:text="Coldplay World Tour" />
+
+    <TextView
+        android:id="@+id/action_edit"
+        style="@style/AdminSheetAction"
+        android:text="@string/admin_action_edit"
+        app:drawableStartCompat="@drawable/ic_edit" />
+
+    <TextView
+        android:id="@+id/action_scan"
+        style="@style/AdminSheetAction"
+        android:text="@string/admin_action_scan"
+        app:drawableStartCompat="@drawable/ic_qr_scan" />
+
+    <TextView
+        android:id="@+id/action_delete"
+        style="@style/AdminSheetAction"
+        android:text="@string/admin_action_delete"
+        android:textColor="@color/status_error"
+        app:drawableStartCompat="@drawable/ic_delete" />
+
+</LinearLayout>

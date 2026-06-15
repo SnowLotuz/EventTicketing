@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.EventTicketing" parent="Theme.Material3.Light.NoActionBar">
+
+        <!-- ===== Primary (Accent) ===== -->
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="colorPrimaryDark">@color/accent_blue_dark</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorPrimaryContainer">@color/accent_blue_light</item>
+        <item name="colorOnPrimaryContainer">@color/slate_900</item>
+
+        <!-- ===== Surfaces / Backgrounds ===== -->
+        <item name="android:colorBackground">@color/background_grey</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/slate_900</item>
+        <item name="colorOnSurfaceVariant">@color/slate_600</item>
+        <item name="colorOutline">@color/slate_200</item>
+
+        <!-- ===== Error ===== -->
+        <item name="colorError">@color/status_error</item>
+
+        <!-- ===== System Bars ===== -->
+        <item name="android:statusBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+
+        <!-- ===== Shape (12dp / 16dp radius) ===== -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.App.Medium</item>
+    </style>
+
+    <!-- Full-screen splash theme: no status bar contrast, white background -->
+    <style name="Theme.EventTicketing.Splash" parent="Theme.EventTicketing">
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:statusBarColor">@color/white</item>
+    </style>
+
+    <!-- ===== Shape Definitions ===== -->
+    <style name="ShapeAppearance.App.Small" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ShapeAppearance.App.Medium" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="AdminSheetAction">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:textColor">@color/slate_900</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="drawableTint">@color/slate_600</item>
+    </style>
+
+    <style name="RatingStar">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:padding">2dp</item>
+        <item name="android:src">@drawable/ic_star</item>
+        <item name="android:tint">@color/slate_200</item>
+        <item name="android:contentDescription">@string/rating_star_cd</item>
+    </style>
+
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ============ BACKGROUNDS ============ -->
+    <color name="white">#FFFFFF</color>
+    <color name="background_grey">#F8FAFC</color>   <!-- Light cool grey surface -->
+    <color name="surface_card">#FFFFFF</color>
+
+    <!-- ============ TEXT (Deep Slate Scale) ============ -->
+    <color name="slate_900">#0F172A</color>          <!-- Primary text -->
+    <color name="slate_600">#475569</color>          <!-- Secondary text -->
+    <color name="slate_400">#94A3B8</color>          <!-- Hint / disabled text -->
+    <color name="slate_200">#E2E8F0</color>          <!-- Dividers / outlines -->
+
+    <!-- ============ SINGLE ACCENT (Premium Blue) ============ -->
+    <color name="accent_blue">#1D4ED8</color>
+    <color name="accent_blue_dark">#1E40AF</color>   <!-- Pressed state -->
+    <color name="accent_blue_light">#DBEAFE</color>  <!-- Tonal containers -->
+
+    <!-- ============ FUNCTIONAL (Seat Map / Status only) ============ -->
+    <color name="seat_available">#16A34A</color>      <!-- Green -->
+    <color name="seat_booked">#CBD5E1</color>         <!-- Grey -->
+    <color name="status_error">#DC2626</color>        <!-- Validation / error -->
+
+    <!-- ============ ON-COLORS ============ -->
+    <color name="on_accent">#FFFFFF</color>
+    <color name="on_surface">#0F172A</color>
+
+</resources>
