@@ -30,11 +30,15 @@
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tab_indicator"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="16dp"
         android:layout_marginBottom="24dp"
         app:tabBackground="@drawable/carousel_indicator_selector"
         app:tabGravity="center"
         app:tabIndicatorHeight="0dp"
+        app:tabMinWidth="16dp"
+        app:tabMaxWidth="16dp"
+        app:tabPaddingStart="0dp"
+        app:tabPaddingEnd="0dp"
         app:layout_constraintBottom_toTopOf="@id/btn_next"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

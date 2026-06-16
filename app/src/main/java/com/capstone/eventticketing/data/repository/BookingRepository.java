@@ -32,7 +32,7 @@ import java.util.Set;
  */
 public class BookingRepository {
 
-    private static final String EVENTS_COLLECTION = "events";
+    private static final String EVENTS_COLLECTION = "movies";
     private static final String SEATS_SUBCOLLECTION = "seats";
     private static final String BOOKINGS_COLLECTION = "bookings";
     private static final String TICKETS_COLLECTION = "tickets";
@@ -290,7 +290,7 @@ public class BookingRepository {
                     for (Booking b : bookings) {
                         String title = (b.getEventId() != null && titles.containsKey(b.getEventId()))
                                 ? titles.get(b.getEventId())
-                                : "Event no longer available";
+                                : "Movie no longer available";
                         out.add(new BookingWithEvent(b, title));
                     }
                     result.setValue(Resource.success(out));

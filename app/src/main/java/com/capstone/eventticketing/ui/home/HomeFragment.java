@@ -29,10 +29,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-/**
- * Discovery / Home screen. Renders the featured carousel, category chips, and
- * the event list, observing {@link HomeViewModel}. Holds no Firestore logic.
- */
 public class HomeFragment extends Fragment implements
         EventAdapter.OnEventInteractionListener,
         CarouselAdapter.OnCarouselClickListener {
@@ -66,6 +62,7 @@ public class HomeFragment extends Fragment implements
         setupRecyclerView();
         setupCarousel();
         setupCategoryChips();
+        setupSearch();
         observeViewModel();
     }
 
@@ -92,9 +89,34 @@ public class HomeFragment extends Fragment implements
             chip.setTextColor(getResources().getColorStateList(R.color.chip_text_selector, null));
             chip.setChipStrokeWidth(0f);
             chip.setId(View.generateViewId());
+            // Nguyên bản của Claude: gọi hàm selectCategory, không cần chế gì thêm
             chip.setOnClickListener(v -> homeViewModel.selectCategory(category));
             binding.chipGroupCategories.addView(chip);
         }
+    }
+
+    private void setupSearch() {
+        binding.etSearch.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+                homeViewModel.setSearchQuery(s.toString());
+            }
+            @Override public void afterTextChanged(android.text.Editable s) { }
+        });
+
+        // The search field's end icon opens the deep-filter sheet.
+        binding.tilSearch.setEndIconMode(
+                com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM);
+        binding.tilSearch.setEndIconDrawable(R.drawable.ic_filter);
+        binding.tilSearch.setEndIconOnClickListener(v -> openFilterSheet());
+    }
+
+    private void openFilterSheet() {
+        FilterBottomSheet sheet = new FilterBottomSheet();
+        EventFilter current = homeViewModel.getFilter().getValue();
+        sheet.setInitialFilter(current != null ? current : EventFilter.none());
+        sheet.setOnFilterAppliedListener(homeViewModel::applyFilter);
+        sheet.show(getChildFragmentManager(), "filter_sheet");
     }
 
     private void observeViewModel() {
@@ -111,13 +133,21 @@ public class HomeFragment extends Fragment implements
             if (resource.status == Resource.Status.ERROR) {
                 showToast(resource.message);
             } else if (resource.status == Resource.Status.SUCCESS) {
-                // Refresh hearts from source of truth after a successful toggle.
                 homeViewModel.getWishlistIds().observe(getViewLifecycleOwner(), r -> {
                     if (r != null && r.status == Resource.Status.SUCCESS && r.data != null) {
                         eventAdapter.setWishlistedIds(new HashSet<>(r.data));
                     }
                 });
             }
+        });
+
+        homeViewModel.getFilter().observe(getViewLifecycleOwner(), filter -> {
+            if (filter == null) return;
+            // Tint the filter icon when deep filters are active, as a visual cue.
+            int tint = filter.hasActiveDeepFilters()
+                    ? R.color.accent_blue : R.color.slate_400;
+            binding.tilSearch.setEndIconTintList(
+                    getResources().getColorStateList(tint, null));
         });
     }
 
@@ -137,6 +167,11 @@ public class HomeFragment extends Fragment implements
                 if (events == null || events.isEmpty()) {
                     binding.rvEvents.setVisibility(View.GONE);
                     binding.layoutEmpty.setVisibility(View.VISIBLE);
+
+                    // Logic đổi câu thông báo của Claude
+                    EventFilter current = homeViewModel.getFilter().getValue();
+                    boolean isFiltered = current != null && (!current.query.isEmpty() || current.hasActiveDeepFilters());
+                    binding.tvEmptyMessage.setText(isFiltered ? "No events match your filters" : "No upcoming events");
                 } else {
                     binding.rvEvents.setVisibility(View.VISIBLE);
                     binding.layoutEmpty.setVisibility(View.GONE);
@@ -155,7 +190,6 @@ public class HomeFragment extends Fragment implements
         }
     }
 
-    /** Featured = first up to 5 events. Restarts auto-scroll on new data. */
     private void updateCarousel(@NonNull List<Event> events) {
         List<Event> featured = events.size() > 5 ? events.subList(0, 5) : events;
         carouselAdapter.submitList(featured);
@@ -182,33 +216,6 @@ public class HomeFragment extends Fragment implements
         }
     }
 
-    private void setupSearch() {
-        binding.etSearch.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
-            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
-                // Update text query inside the active filter
-                EventFilter current = homeViewModel.getActiveFilter();
-                EventFilter updated = new EventFilter(s.toString(), current.category, current.dateStartMillis, current.dateEndMillis, current.maxPrice);
-                homeViewModel.setFilter(updated);
-            }
-            @Override public void afterTextChanged(android.text.Editable s) { }
-        });
-
-        // The search field's end icon opens the deep-filter sheet.
-        binding.tilSearch.setEndIconMode(
-                com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM);
-        binding.tilSearch.setEndIconDrawable(R.drawable.ic_filter);
-        binding.tilSearch.setEndIconOnClickListener(v -> openFilterSheet());
-    }
-
-    private void openFilterSheet() {
-        FilterBottomSheet sheet = new FilterBottomSheet();
-        EventFilter current = homeViewModel.getActiveFilter();
-        sheet.setInitialFilter(current != null ? current : new EventFilter(null, null, 0L, Long.MAX_VALUE, Double.MAX_VALUE));
-        sheet.setOnFilterAppliedListener(homeViewModel::setFilter);
-        sheet.show(getChildFragmentManager(), "filter_sheet");
-    }
-
     @Override
     public void onEventClick(@NonNull Event event) {
         if (event.getEventId() == null) return;
@@ -226,6 +233,7 @@ public class HomeFragment extends Fragment implements
         if (event.getEventId() == null) return;
         startActivity(EventDetailActivity.newIntent(requireContext(), event.getEventId()));
     }
+
     @Override
     public void onResume() {
         super.onResume();

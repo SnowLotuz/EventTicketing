@@ -21,15 +21,19 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Deep-filter sheet: category, price range, and date range. Initializes from the
+ * current {@link EventFilter} and returns a new one via {@link OnFilterAppliedListener}.
+ * Holds no business logic — it only collects criteria.
+ */
 public class FilterBottomSheet extends BottomSheetDialogFragment {
 
     public interface OnFilterAppliedListener {
         void onFilterApplied(@NonNull EventFilter filter);
     }
 
-    private static final String CATEGORY_ALL = "All";
     private static final List<String> CATEGORIES =
-            Arrays.asList(CATEGORY_ALL, "Music", "Sports", "Theater");
+            Arrays.asList(EventFilter.CATEGORY_ALL, "Music", "Sports", "Theater");
     private static final float PRICE_MAX = 500f;
     private static final SimpleDateFormat DATE_FMT =
             new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
@@ -37,7 +41,8 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
     private SheetFilterBinding binding;
     @Nullable private OnFilterAppliedListener listener;
 
-    private String selectedCategory = CATEGORY_ALL;
+    // Working state, seeded from the incoming filter.
+    private String selectedCategory = EventFilter.CATEGORY_ALL;
     private long fromMillis = 0L;
     private long toMillis = 0L;
     @Nullable private EventFilter initial;
@@ -57,10 +62,10 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        EventFilter f = (initial != null) ? initial : new EventFilter(null, null, 0L, Long.MAX_VALUE, Double.MAX_VALUE);
-        selectedCategory = (f.category != null) ? f.category : CATEGORY_ALL;
-        fromMillis = f.dateStartMillis;
-        toMillis = (f.dateEndMillis == Long.MAX_VALUE) ? 0L : f.dateEndMillis;
+        EventFilter f = (initial != null) ? initial : EventFilter.none();
+        selectedCategory = f.category;
+        fromMillis = f.startDateMillis;
+        toMillis = f.endDateMillis;
 
         buildCategoryChips();
         setupPriceSlider(f);
@@ -84,7 +89,7 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
     }
 
     private void setupPriceSlider(@NonNull EventFilter f) {
-        float from = 0f; // Slider left thumb
+        float from = (float) Math.max(0d, f.minPrice);
         float to = (f.maxPrice >= Double.MAX_VALUE) ? PRICE_MAX : (float) Math.min(PRICE_MAX, f.maxPrice);
         binding.sliderPrice.setValues(from, to);
         updatePriceLabel(from, to);
@@ -133,7 +138,7 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
 
     private void setupActions() {
         binding.tvReset.setOnClickListener(v -> {
-            selectedCategory = CATEGORY_ALL;
+            selectedCategory = EventFilter.CATEGORY_ALL;
             fromMillis = 0L;
             toMillis = 0L;
             binding.etDateFrom.setText("");
@@ -144,16 +149,15 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
 
         binding.btnApplyFilter.setOnClickListener(v -> {
             List<Float> values = binding.sliderPrice.getValues();
+            double min = values.get(0);
             float toVal = values.get(1);
             // Treat the slider maxed-out as "no upper bound".
             double max = (toVal >= PRICE_MAX) ? Double.MAX_VALUE : toVal;
-            long endMillisSafe = (toMillis == 0L) ? Long.MAX_VALUE : toMillis;
-            String finalCat = CATEGORY_ALL.equals(selectedCategory) ? null : selectedCategory;
 
             // Preserve the existing search query when applying deep filters.
             String query = (initial != null) ? initial.query : "";
 
-            EventFilter result = new EventFilter(query, finalCat, fromMillis, endMillisSafe, max);
+            EventFilter result = new EventFilter(query, selectedCategory, min, max, fromMillis, toMillis);
             if (listener != null) listener.onFilterApplied(result);
             dismiss();
         });

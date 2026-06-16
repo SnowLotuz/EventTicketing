@@ -18,9 +18,7 @@ import com.capstone.eventticketing.util.Resource;
 import com.capstone.eventticketing.ui.seat.SeatSelectionActivity;
 import com.capstone.eventticketing.ui.rating.RatingDialogFragment;
 import com.capstone.eventticketing.ui.rating.RatingViewModel;
-import com.capstone.eventticketing.ui.detail.ReviewAdapter;
 
-import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 

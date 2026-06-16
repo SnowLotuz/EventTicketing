@@ -158,4 +158,31 @@ public class ReviewRepository {
 
         return result;
     }
+
+    /**
+     * @return Success(true) if the current user has a CHECKED-IN ticket for the
+     * event (i.e. they attended), else Success(false).
+     */
+    public LiveData<Resource<Boolean>> hasAttended(@NonNull String eventId) {
+        MutableLiveData<Resource<Boolean>> result = new MutableLiveData<>();
+        result.setValue(Resource.loading());
+
+        String uid = currentUid();
+        if (uid == null) {
+            result.setValue(Resource.error("Not signed in."));
+            return result;
+        }
+
+        firestore.collection("tickets")
+                .whereEqualTo(FIELD_EVENT_ID, eventId)
+                .whereEqualTo(FIELD_USER_ID, uid)
+                .whereEqualTo("isCheckedIn", true)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(snap -> result.setValue(Resource.success(!snap.isEmpty())))
+                .addOnFailureListener(e -> result.setValue(Resource.error(
+                        e.getMessage() != null ? e.getMessage() : "Failed to check attendance.")));
+
+        return result;
+    }
 }

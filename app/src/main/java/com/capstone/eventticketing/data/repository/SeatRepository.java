@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class SeatRepository {
 
-    private static final String EVENTS_COLLECTION = "events";
+    private static final String EVENTS_COLLECTION = "movies";
     private static final String SEATS_SUBCOLLECTION = "seats";
     private static final String FIELD_ROW = "row";
     private static final String FIELD_COLUMN = "column";

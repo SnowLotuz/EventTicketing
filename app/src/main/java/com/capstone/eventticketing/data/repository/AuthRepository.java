@@ -57,8 +57,10 @@ public class AuthRepository {
      *
      * @return LiveData emitting {@link Resource} states; success carries the {@link FirebaseUser}.
      */
+    // Đã cập nhật: Hàm register nhận thêm phoneNumber
     public LiveData<Resource<FirebaseUser>> register(@NonNull String name,
                                                      @NonNull String email,
+                                                     @NonNull String phoneNumber,
                                                      @NonNull String password) {
         MutableLiveData<Resource<FirebaseUser>> result = new MutableLiveData<>();
         result.setValue(Resource.loading());
@@ -70,7 +72,7 @@ public class AuthRepository {
                         result.setValue(Resource.error("Registration failed: user is null."));
                         return;
                     }
-                    createUserProfile(firebaseUser, name, email, result);
+                    createUserProfile(firebaseUser, name, email, phoneNumber, result);
                 })
                 .addOnFailureListener(e -> result.setValue(Resource.error(mapAuthError(e))));
 
@@ -78,11 +80,13 @@ public class AuthRepository {
     }
 
     /** Writes the initial Users document. Rolls the emitted state forward to success/error. */
+    // Đã cập nhật: Truyền phoneNumber vào constructor của User
     private void createUserProfile(@NonNull FirebaseUser firebaseUser,
                                    @NonNull String name,
                                    @NonNull String email,
+                                   @NonNull String phoneNumber,
                                    @NonNull MutableLiveData<Resource<FirebaseUser>> result) {
-        User user = new User(firebaseUser.getUid(), name, email, DEFAULT_ROLE);
+        User user = new User(firebaseUser.getUid(), name, email, phoneNumber, DEFAULT_ROLE);
 
         firestore.collection(USERS_COLLECTION)
                 .document(firebaseUser.getUid())

@@ -49,6 +49,13 @@ public class AdminUserAdapter extends ListAdapter<User, AdminUserAdapter.VH> {
             String name = user.getName() != null ? user.getName() : "Unknown";
             b.tvName.setText(name);
             b.tvEmail.setText(user.getEmail());
+
+            // Đã cập nhật: Bổ sung logic hiển thị số điện thoại (hoặc dòng thông báo mặc định nếu không có)
+            b.tvPhone.setText(
+                    user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()
+                            ? user.getPhoneNumber()
+                            : b.getRoot().getContext().getString(R.string.admin_no_phone));
+
             b.tvInitial.setText(name.isEmpty()
                     ? "?" : name.substring(0, 1).toUpperCase(Locale.getDefault()));
 

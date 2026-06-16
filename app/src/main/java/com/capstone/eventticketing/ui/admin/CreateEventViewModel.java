@@ -6,9 +6,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.data.model.Seat;
-import com.capstone.eventticketing.data.repository.EventRepository;
+import com.capstone.eventticketing.data.repository.MovieRepository;
 import com.capstone.eventticketing.util.Resource;
 import com.capstone.eventticketing.util.SeatMapGenerator;
 import com.google.firebase.Timestamp;
@@ -20,51 +20,48 @@ import java.util.List;
 
 /**
  * Backs {@link CreateEventActivity}. Validates form input, assembles a complete
- * {@link Event} (including a non-null nested {@code seatMap} and {@code rating}
- * to prevent client-side null crashes), and persists via {@link EventRepository}.
+ * {@link Movie} (including a non-null nested {@code seatMap} and {@code rating}
+ * to prevent client-side null crashes), and persists via {@link MovieRepository}.
  */
 public class CreateEventViewModel extends ViewModel {
 
     private static final String TIER_STANDARD = "Standard";
 
-    @NonNull private final EventRepository eventRepository;
+    @NonNull private final MovieRepository movieRepository;
 
     private final MutableLiveData<Resource<String>> saveState = new MutableLiveData<>();
     private final MutableLiveData<String> validationError = new MutableLiveData<>();
 
     public CreateEventViewModel() {
-        this.eventRepository = new EventRepository();
+        this.movieRepository = new MovieRepository();
     }
 
     public LiveData<Resource<String>> getSaveState() { return saveState; }
     public LiveData<String> getValidationError() { return validationError; }
 
     /**
-     * Validates inputs and, if valid, builds and saves the event.
-     *
-     * @param eventDateMillis selected date/time in epoch millis, or -1 if unset.
+     * Validates inputs and, if valid, builds and saves the movie.
      */
-    public void createEvent(String title,
-                            String category,
-                            String venue,
+    public void createMovie(String title,
+                            String genre,
+                            String durationStr,
                             String description,
-                            String imageUrl,
-                            long eventDateMillis,
-                            String capacityStr,
+                            String posterUrl,
+                            long releaseDateMillis,
                             String priceStr) {
 
-        if (isBlank(title)) { validationError.setValue("Please enter an event title."); return; }
-        if (isBlank(category)) { validationError.setValue("Please select a category."); return; }
-        if (isBlank(venue)) { validationError.setValue("Please enter a venue."); return; }
+        if (isBlank(title)) { validationError.setValue("Please enter a movie title."); return; }
+        if (isBlank(genre)) { validationError.setValue("Please select a genre."); return; }
+        if (isBlank(durationStr)) { validationError.setValue("Please enter movie duration."); return; }
         if (isBlank(description)) { validationError.setValue("Please enter a description."); return; }
-        if (eventDateMillis <= 0) { validationError.setValue("Please pick a date and time."); return; }
+        if (releaseDateMillis <= 0) { validationError.setValue("Please pick a release date."); return; }
 
-        int capacity;
+        int durationMinutes;
         try {
-            capacity = Integer.parseInt(capacityStr.trim());
-            if (capacity <= 0) { validationError.setValue("Capacity must be greater than 0."); return; }
+            durationMinutes = Integer.parseInt(durationStr.trim());
+            if (durationMinutes <= 0) { validationError.setValue("Duration must be greater than 0."); return; }
         } catch (NumberFormatException e) {
-            validationError.setValue("Please enter a valid capacity.");
+            validationError.setValue("Please enter a valid duration in minutes.");
             return;
         }
 
@@ -77,15 +74,12 @@ public class CreateEventViewModel extends ViewModel {
             return;
         }
 
-        Event event = buildEvent(title, category, venue, description, imageUrl,
-                eventDateMillis, capacity, basePrice);
+        Movie movie = buildMovie(title, genre, durationMinutes, description, posterUrl, releaseDateMillis, basePrice);
 
-        // Keep the parsed values for seat generation after the event is created.
-        final int finalCapacity = capacity;
         final double finalBasePrice = basePrice;
 
         saveState.setValue(Resource.loading());
-        LiveData<Resource<String>> createSource = eventRepository.createEvent(event);
+        LiveData<Resource<String>> createSource = movieRepository.createMovie(movie);
         createSource.observeForever(new androidx.lifecycle.Observer<Resource<String>>() {
             @Override
             public void onChanged(Resource<String> resource) {
@@ -94,19 +88,20 @@ public class CreateEventViewModel extends ViewModel {
 
                 if (resource.status != Resource.Status.SUCCESS || resource.data == null) {
                     saveState.setValue(Resource.error(
-                            resource.message != null ? resource.message : "Failed to create event."));
+                            resource.message != null ? resource.message : "Failed to create movie."));
                     return;
                 }
-                // Event created — now seed its seat grid.
-                seedSeats(resource.data, finalCapacity, finalBasePrice);
+                // Movie created — now seed its 150-seat grid.
+                seedSeats(resource.data, finalBasePrice);
             }
         });
     }
 
-    /** Generates and writes the seat grid for a freshly created event. */
-    private void seedSeats(@NonNull String eventId, int capacity, double basePrice) {
-        List<Seat> seats = SeatMapGenerator.generate(capacity, TIER_STANDARD, basePrice);
-        LiveData<Resource<Boolean>> seatSource = eventRepository.createSeatsForEvent(eventId, seats);
+    /** Generates and writes the seat grid for a freshly created movie. */
+    private void seedSeats(@NonNull String movieId, double basePrice) {
+        List<Seat> seats = SeatMapGenerator.generateCinema(TIER_STANDARD, basePrice);
+
+        LiveData<Resource<Boolean>> seatSource = movieRepository.createSeatsForMovie(movieId, seats);
         seatSource.observeForever(new androidx.lifecycle.Observer<Resource<Boolean>>() {
             @Override
             public void onChanged(Resource<Boolean> resource) {
@@ -114,45 +109,43 @@ public class CreateEventViewModel extends ViewModel {
                 seatSource.removeObserver(this);
 
                 if (resource.status == Resource.Status.SUCCESS) {
-                    saveState.setValue(Resource.success(eventId));
+                    saveState.setValue(Resource.success(movieId));
                 } else {
-                    // Event exists but seats failed — surface it so the admin can retry.
                     saveState.setValue(Resource.error(
-                            "Event created, but seat setup failed: "
+                            "Movie created, but seat setup failed: "
                                     + (resource.message != null ? resource.message : "unknown error")));
                 }
             }
         });
     }
 
-    /** Assembles a fully-populated Event. Nested objects are never left null. */
-    private Event buildEvent(String title, String category, String venue, String description,
-                             @Nullable String imageUrl, long eventDateMillis,
-                             int capacity, double basePrice) {
-        Event event = new Event();
-        event.setTitle(title.trim());
-        event.setCategory(category.trim());
-        event.setVenue(venue.trim());
-        event.setDescription(description.trim());
-        event.setImageUrl(imageUrl != null ? imageUrl.trim() : "");
-        event.setEventDate(new Timestamp(new Date(eventDateMillis)));
-        event.setStatus(Event.STATUS_UPCOMING);
+    /** Assembles a fully-populated Movie. Nested objects are never left null. */
+    private Movie buildMovie(String title, String genre, int durationMinutes, String description,
+                             @Nullable String posterUrl, long releaseDateMillis, double basePrice) {
+        Movie movie = new Movie();
+        movie.setTitle(title.trim());
+        movie.setGenre(genre.trim());
+        movie.setDurationMinutes(durationMinutes);
+        movie.setDescription(description.trim());
+        movie.setPosterUrl(posterUrl != null ? posterUrl.trim() : "");
+        movie.setReleaseDate(new Timestamp(new Date(releaseDateMillis)));
+        movie.setStatus(Movie.STATUS_NOW_SHOWING);
 
-        // Nested seatMap with a single base tier — guarantees getLowestPrice() works.
-        Event.SeatMap seatMap = new Event.SeatMap();
-        seatMap.setTotalCapacity(capacity);
+        // Nested seatMap with a single base tier
+        Movie.SeatMap seatMap = new Movie.SeatMap();
+        seatMap.setTotalCapacity(SeatMapGenerator.CINEMA_CAPACITY);
         Map<String, Double> tiers = new HashMap<>();
         tiers.put(TIER_STANDARD, basePrice);
         seatMap.setPricingTiers(tiers);
-        event.setSeatMap(seatMap);
+        movie.setSeatMap(seatMap);
 
-        // Initialize rating so detail/home screens never read a null rating.
-        Event.Rating rating = new Event.Rating();
+        // Initialize rating
+        Movie.Rating rating = new Movie.Rating();
         rating.setAverageScore(0d);
         rating.setTotalReviews(0);
-        event.setRating(rating);
+        movie.setRating(rating);
 
-        return event;
+        return movie;
     }
 
     private boolean isBlank(@Nullable String s) {

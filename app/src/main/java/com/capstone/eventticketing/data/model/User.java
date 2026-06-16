@@ -15,6 +15,7 @@ public class User {
     private String userId;
     private String name;
     private String email;
+    private String phoneNumber; // Đã thêm trường phoneNumber
     private String avatarUrl;
     private String role;
     private String fcmToken;
@@ -25,10 +26,12 @@ public class User {
         this.wishlistEventIds = new ArrayList<>();
     }
 
-    public User(String userId, String name, String email, String role) {
+    // Cập nhật constructor để nhận thêm phoneNumber
+    public User(String userId, String name, String email, String phoneNumber, String role) {
         this.userId = userId;
         this.name = name;
         this.email = email;
+        this.phoneNumber = phoneNumber;
         this.role = role;
         this.wishlistEventIds = new ArrayList<>();
     }
@@ -41,6 +44,10 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    // Thêm Getter và Setter cho phoneNumber
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }

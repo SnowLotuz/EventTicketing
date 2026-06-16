@@ -50,7 +50,7 @@ public class AuthViewModel extends ViewModel {
                 c -> authRepository.login(c.email, c.password));
 
         registerState = Transformations.switchMap(registerTrigger,
-                r -> authRepository.register(r.name, r.email, r.password));
+                r -> authRepository.register(r.name, r.email, r.phoneNumber, r.password));
 
         resetState = Transformations.switchMap(resetTrigger,
                 authRepository::sendPasswordReset);
@@ -110,13 +110,18 @@ public class AuthViewModel extends ViewModel {
         loginTrigger.setValue(new Credentials(email.trim(), password));
     }
 
-    public void register(String name, String email, String password, String confirmPassword) {
+    // Đã cập nhật: Nhận thêm phoneNumber và thêm logic validate số điện thoại
+    public void register(String name, String email, String phoneNumber, String password, String confirmPassword) {
         if (TextUtils.isEmpty(name) || name.trim().length() < 2) {
             validationError.setValue("Please enter your name.");
             return;
         }
         if (isEmailInvalid(email)) {
             validationError.setValue("Please enter a valid email address.");
+            return;
+        }
+        if (isPhoneInvalid(phoneNumber)) {
+            validationError.setValue("Please enter a valid phone number.");
             return;
         }
         if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
@@ -127,7 +132,7 @@ public class AuthViewModel extends ViewModel {
             validationError.setValue("Passwords do not match.");
             return;
         }
-        registerTrigger.setValue(new RegistrationData(name.trim(), email.trim(), password));
+        registerTrigger.setValue(new RegistrationData(name.trim(), email.trim(), phoneNumber.trim(), password));
     }
 
     public void sendPasswordReset(String email) {
@@ -146,6 +151,19 @@ public class AuthViewModel extends ViewModel {
         return TextUtils.isEmpty(email) || !Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches();
     }
 
+    /**
+     * Validates a phone number: non-empty and matching a reasonable phone pattern
+     * (digits, optional leading +, spaces/dashes/parentheses allowed, 7–15 digits).
+     */
+    private boolean isPhoneInvalid(String phone) {
+        if (TextUtils.isEmpty(phone)) return true;
+        String trimmed = phone.trim();
+        // Android's built-in pattern is permissive; pair it with a digit-count check.
+        if (!android.util.Patterns.PHONE.matcher(trimmed).matches()) return true;
+        int digits = trimmed.replaceAll("\\D", "").length();
+        return digits < 7 || digits > 15;
+    }
+
     // --- Lightweight input holders for switchMap triggers ---
 
     private static class Credentials {
@@ -157,13 +175,16 @@ public class AuthViewModel extends ViewModel {
         }
     }
 
+    // Đã cập nhật: Data class giờ có thêm trường phoneNumber
     private static class RegistrationData {
         final String name;
         final String email;
+        final String phoneNumber;
         final String password;
-        RegistrationData(String name, String email, String password) {
+        RegistrationData(String name, String email, String phoneNumber, String password) {
             this.name = name;
             this.email = email;
+            this.phoneNumber = phoneNumber;
             this.password = password;
         }
     }

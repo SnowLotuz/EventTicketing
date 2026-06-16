@@ -36,6 +36,7 @@ public class RegisterActivity extends AppCompatActivity {
         binding.btnRegister.setOnClickListener(v -> authViewModel.register(
                 getText(binding.etName),
                 getText(binding.etEmail),
+                getText(binding.etPhone),
                 getText(binding.etPassword),
                 getText(binding.etConfirmPassword)));
 

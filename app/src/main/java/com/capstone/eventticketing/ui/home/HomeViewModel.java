@@ -15,59 +15,82 @@ import com.capstone.eventticketing.util.Resource;
 import java.util.List;
 
 /**
- * Backs {@link HomeFragment}. Fetches the full event catalog once, then applies
- * search and deep filters in memory via {@link EventFilter}. This architecture
- * allows real-time substring search and multi-criteria filtering without
- * requiring complex, restrictive Firestore composite indexes.
+ * Backs {@link HomeFragment}. Loads all events once and exposes a filtered view
+ * derived from the current {@link EventFilter} (real-time title search + deep
+ * filters). Filtering is in-memory; see EventFilter for the rationale.
  */
 public class HomeViewModel extends ViewModel {
 
-    @NonNull private final EventRepository eventRepository = new EventRepository();
+    @NonNull private final EventRepository eventRepository;
 
-    // The single source of truth for the raw, unfiltered catalog.
+    private final MutableLiveData<Integer> refreshTrigger = new MutableLiveData<>(0);
     private final LiveData<Resource<List<Event>>> rawEvents;
 
-    // The active filter criteria.
-    private final MutableLiveData<EventFilter> activeFilter = new MutableLiveData<>(
-            new EventFilter(null, null, 0L, Long.MAX_VALUE, Double.MAX_VALUE));
+    private final MutableLiveData<EventFilter> filter = new MutableLiveData<>(EventFilter.none());
 
-    // The combined result: rawEvents passed through activeFilter.
+    /** The list the UI renders: rawEvents passed through the active filter. */
     private final MediatorLiveData<Resource<List<Event>>> filteredEvents = new MediatorLiveData<>();
 
     private final MutableLiveData<Resource<Boolean>> wishlistToggleState = new MutableLiveData<>();
 
     public HomeViewModel() {
-        // Fetch all upcoming events exactly once.
-        rawEvents = eventRepository.getEvents(null);
+        this.eventRepository = new EventRepository();
+        // Always fetch the full catalog; category is handled by the in-memory filter.
+        this.rawEvents = androidx.lifecycle.Transformations.switchMap(
+                refreshTrigger, t -> eventRepository.getMovies(null));
 
-        // Recompute the filtered list whenever the raw data OR the filter changes.
-        filteredEvents.addSource(rawEvents, res -> applyFilter(res, activeFilter.getValue()));
-        filteredEvents.addSource(activeFilter, filter -> applyFilter(rawEvents.getValue(), filter));
+        // Recompute filteredEvents whenever either the data or the filter changes.
+        filteredEvents.addSource(rawEvents, r -> recompute());
+        filteredEvents.addSource(filter, f -> recompute());
     }
 
-    public LiveData<Resource<List<Event>>> getEvents() { return filteredEvents; }
+    private void recompute() {
+        Resource<List<Event>> r = rawEvents.getValue();
+        EventFilter f = filter.getValue();
+        if (r == null) return;
+        if (r.status != Resource.Status.SUCCESS) {
+            filteredEvents.setValue(r); // propagate Loading / Error as-is
+            return;
+        }
+        List<Event> filtered = (f != null ? f : EventFilter.none()).apply(r.data);
+        filteredEvents.setValue(Resource.success(filtered));
+    }
+
+    public LiveData<Resource<List<Event>>> getMovies() { return filteredEvents; }
+    public LiveData<EventFilter> getFilter() { return filter; }
     public LiveData<Resource<Boolean>> getWishlistToggleState() { return wishlistToggleState; }
-    public EventFilter getActiveFilter() { return activeFilter.getValue(); }
 
-    /** Replaces the current filter, triggering an immediate in-memory recompute. */
-    public void setFilter(@NonNull EventFilter filter) {
-        activeFilter.setValue(filter);
+    public LiveData<Resource<List<String>>> getWishlistIds() {
+        return eventRepository.getWishlistIds();
     }
 
-    private void applyFilter(Resource<List<Event>> dataRes, EventFilter filter) {
-        if (dataRes == null) return;
-        if (dataRes.status != Resource.Status.SUCCESS || dataRes.data == null) {
-            // Pass loading/error states through directly.
-            filteredEvents.setValue(dataRes);
-            return;
-        }
-        if (filter == null) {
-            filteredEvents.setValue(dataRes);
-            return;
-        }
-        // Success + Filter: apply the math.
-        List<Event> result = filter.apply(dataRes.data);
-        filteredEvents.setValue(Resource.success(result));
+    /** Real-time search: updates only the query, preserving deep filters. */
+    public void setSearchQuery(@NonNull String query) {
+        EventFilter current = filter.getValue();
+        filter.setValue((current != null ? current : EventFilter.none()).withQuery(query));
+    }
+
+    /** Category chip selection feeds into the same filter object. */
+    public void selectCategory(@NonNull String category) {
+        EventFilter c = filter.getValue();
+        if (c == null) c = EventFilter.none();
+        filter.setValue(new EventFilter(c.query, category, c.minPrice, c.maxPrice,
+                c.startDateMillis, c.endDateMillis));
+    }
+
+    /** Applies a fully-specified deep filter from the bottom sheet. */
+    public void applyFilter(@NonNull EventFilter newFilter) {
+        filter.setValue(newFilter);
+    }
+
+    /** Clears everything back to the default. */
+    public void clearFilters() {
+        filter.setValue(EventFilter.none());
+    }
+
+    public void refresh() {
+        Integer current = refreshTrigger.getValue();
+        refreshTrigger.setValue(current == null ? 1 : current + 1);
     }
 
     public void toggleWishlist(@NonNull String eventId, boolean add) {

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/surface_card"
+    app:strokeColor="@color/slate_200"
+    app:strokeWidth="1dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/iv_poster"
+            android:layout_width="100dp"
+            android:layout_height="0dp"
+            android:scaleType="centerCrop"
+            android:background="@color/slate_200"
+            android:contentDescription="@string/cd_movie_poster"
+            app:layout_constraintDimensionRatio="2:3"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="@color/slate_900"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toTopOf="@id/iv_poster"
+            app:layout_constraintStart_toEndOf="@id/iv_poster"
+            app:layout_constraintEnd_toStartOf="@id/btn_wishlist"
+            tools:text="Dune: Part Two" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_wishlist"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            app:icon="@drawable/ic_heart_outline"
+            app:iconTint="@color/status_error"
+            app:layout_constraintTop_toTopOf="@id/iv_poster"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chip_genre"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/accent_blue"
+            app:chipBackgroundColor="@color/accent_blue_light"
+            app:chipStrokeWidth="0dp"
+            app:chipMinHeight="26dp"
+            app:ensureMinTouchTargetSize="false"
+            app:layout_constraintTop_toBottomOf="@id/tv_title"
+            app:layout_constraintStart_toEndOf="@id/iv_poster"
+            tools:text="Sci-Fi" />
+
+        <ImageView
+            android:id="@+id/ic_duration"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="12dp"
+            android:src="@drawable/ic_timer"
+            app:tint="@color/slate_400"
+            android:contentDescription="@null"
+            app:layout_constraintTop_toBottomOf="@id/chip_genre"
+            app:layout_constraintStart_toEndOf="@id/iv_poster" />
+
+        <TextView
+            android:id="@+id/tv_duration"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/slate_600"
+            android:textSize="13sp"
+            app:layout_constraintTop_toTopOf="@id/ic_duration"
+            app:layout_constraintBottom_toBottomOf="@id/ic_duration"
+            app:layout_constraintStart_toEndOf="@id/ic_duration"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="2h 46m" />
+
+        <ImageView
+            android:id="@+id/ic_star"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:src="@drawable/ic_star"
+            app:tint="@color/accent_blue"
+            android:contentDescription="@null"
+            app:layout_constraintTop_toBottomOf="@id/ic_duration"
+            app:layout_constraintStart_toEndOf="@id/iv_poster" />
+
+        <TextView
+            android:id="@+id/tv_rating"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/slate_600"
+            android:textSize="13sp"
+            app:layout_constraintTop_toTopOf="@id/ic_star"
+            app:layout_constraintBottom_toBottomOf="@id/ic_star"
+            app:layout_constraintStart_toEndOf="@id/ic_star"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="4.6" />
+
+        <TextView
+            android:id="@+id/tv_price"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/accent_blue"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/ic_star"
+            app:layout_constraintStart_toEndOf="@id/iv_poster"
+            tools:text="From $12" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</com.google.android.material.card.MaterialCardView>

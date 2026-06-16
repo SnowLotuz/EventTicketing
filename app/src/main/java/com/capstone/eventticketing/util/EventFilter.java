@@ -7,66 +7,97 @@ import com.capstone.eventticketing.data.model.Event;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
- * Pure, in-memory filter criteria for the event catalog. Evaluates an event
- * against an optional search query, category, date range, and price range.
+ * Immutable set of search/filter criteria plus a pure function to apply them.
+ * Filtering is done in memory (Firestore cannot do substring search), which for
+ * a catalog of this size is instant and far simpler than a search-service.
  */
-public class EventFilter {
+public final class EventFilter {
 
-    @Nullable public final String query;
-    @Nullable public final String category;
-    public final long dateStartMillis; // 0 = no lower bound
-    public final long dateEndMillis;   // Long.MAX_VALUE = no upper bound
-    public final double maxPrice;      // Double.MAX_VALUE = no upper bound
+    public static final String CATEGORY_ALL = "All";
 
-    public EventFilter(@Nullable String query, @Nullable String category,
-                       long dateStartMillis, long dateEndMillis, double maxPrice) {
-        this.query = query != null ? query.toLowerCase().trim() : null;
+    @NonNull public final String query;          // title substring, may be empty
+    @NonNull public final String category;       // CATEGORY_ALL or a specific category
+    public final double minPrice;                // inclusive
+    public final double maxPrice;                // inclusive
+    public final long startDateMillis;           // 0 = no lower bound
+    public final long endDateMillis;             // 0 = no upper bound
+
+    public EventFilter(@NonNull String query, @NonNull String category,
+                       double minPrice, double maxPrice,
+                       long startDateMillis, long endDateMillis) {
+        this.query = query;
         this.category = category;
-        this.dateStartMillis = dateStartMillis;
-        this.dateEndMillis = dateEndMillis;
+        this.minPrice = minPrice;
         this.maxPrice = maxPrice;
+        this.startDateMillis = startDateMillis;
+        this.endDateMillis = endDateMillis;
     }
 
-    /** @return true if the event satisfies every defined criteria in this filter. */
-    public boolean matches(@NonNull Event event) {
-        // Category (exact match)
-        if (category != null && !category.equals(event.getCategory())) {
-            return false;
-        }
-
-        // Date range
-        long eventTime = event.getEventDate() != null ? event.getEventDate().toDate().getTime() : 0L;
-        if (eventTime < dateStartMillis || eventTime > dateEndMillis) {
-            return false;
-        }
-
-        // Price ceiling (evaluates the lowest available tier)
-        double price = event.getSeatMap() != null ? event.getSeatMap().getLowestPrice() : 0d;
-        if (price > maxPrice) {
-            return false;
-        }
-
-        // Text search (substring match on title or venue, case-insensitive)
-        if (query != null && !query.isEmpty()) {
-            String title = event.getTitle() != null ? event.getTitle().toLowerCase() : "";
-            String venue = event.getVenue() != null ? event.getVenue().toLowerCase() : "";
-            if (!title.contains(query) && !venue.contains(query)) {
-                return false;
-            }
-        }
-
-        return true;
+    /** A no-op filter that matches everything (default state). */
+    public static EventFilter none() {
+        return new EventFilter("", CATEGORY_ALL, 0d, Double.MAX_VALUE, 0L, 0L);
     }
 
-    /** Applies this filter to a list of events. */
+    /** Returns a copy with only the query changed (for real-time search typing). */
+    public EventFilter withQuery(@NonNull String newQuery) {
+        return new EventFilter(newQuery, category, minPrice, maxPrice, startDateMillis, endDateMillis);
+    }
+
+    /** True if any deep-filter (non-query) criterion is narrower than the default. */
+    public boolean hasActiveDeepFilters() {
+        return !CATEGORY_ALL.equals(category)
+                || minPrice > 0d
+                || maxPrice < Double.MAX_VALUE
+                || startDateMillis > 0L
+                || endDateMillis > 0L;
+    }
+
+    /**
+     * Applies all criteria to a source list. Pure: no side effects, returns a
+     * new list. Each event must satisfy every active criterion (AND semantics).
+     */
     @NonNull
-    public List<Event> apply(@NonNull List<Event> events) {
-        List<Event> filtered = new ArrayList<>();
-        for (Event e : events) {
-            if (matches(e)) filtered.add(e);
+    public List<Event> apply(@Nullable List<Event> source) {
+        List<Event> out = new ArrayList<>();
+        if (source == null) return out;
+
+        String q = query.trim().toLowerCase(Locale.getDefault());
+
+        for (Event e : source) {
+            if (!matchesQuery(e, q)) continue;
+            if (!matchesCategory(e)) continue;
+            if (!matchesPrice(e)) continue;
+            if (!matchesDate(e)) continue;
+            out.add(e);
         }
-        return filtered;
+        return out;
+    }
+
+    private boolean matchesQuery(@NonNull Event e, @NonNull String q) {
+        if (q.isEmpty()) return true;
+        String title = e.getTitle() != null ? e.getTitle().toLowerCase(Locale.getDefault()) : "";
+        return title.contains(q);
+    }
+
+    private boolean matchesCategory(@NonNull Event e) {
+        if (CATEGORY_ALL.equals(category)) return true;
+        return category.equals(e.getCategory());
+    }
+
+    private boolean matchesPrice(@NonNull Event e) {
+        double price = (e.getSeatMap() != null) ? e.getSeatMap().getLowestPrice() : 0d;
+        return price >= minPrice && price <= maxPrice;
+    }
+
+    private boolean matchesDate(@NonNull Event e) {
+        if (startDateMillis == 0L && endDateMillis == 0L) return true;
+        if (e.getEventDate() == null) return false;
+        long t = e.getEventDate().toDate().getTime();
+        if (startDateMillis > 0L && t < startDateMillis) return false;
+        if (endDateMillis > 0L && t > endDateMillis) return false;
+        return true;
     }
 }
