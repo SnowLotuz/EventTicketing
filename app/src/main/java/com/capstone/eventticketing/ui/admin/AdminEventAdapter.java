@@ -10,21 +10,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.ItemAdminEventBinding;
 
-import java.text.SimpleDateFormat;
-import java.util.Locale;
-
 /** Management list adapter. Each row exposes a "more" action menu via the host. */
-public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.VH> {
+public class AdminEventAdapter extends ListAdapter<Movie, AdminEventAdapter.VH> {
 
     public interface OnEventActionListener {
-        void onEventOptions(@NonNull Event event);
+        void onMovieOptions(@NonNull Movie movie);
     }
-
-    private static final SimpleDateFormat DATE_FORMAT =
-            new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
 
     @NonNull private final OnEventActionListener listener;
 
@@ -50,34 +44,37 @@ public class AdminEventAdapter extends ListAdapter<Event, AdminEventAdapter.VH> 
         private final ItemAdminEventBinding b;
         VH(@NonNull ItemAdminEventBinding b) { super(b.getRoot()); this.b = b; }
 
-        void bind(@NonNull Event event) {
-            b.tvTitle.setText(event.getTitle());
-            b.chipStatus.setText(event.getStatus());
-            if (event.getEventDate() != null) {
-                b.tvDate.setText(DATE_FORMAT.format(event.getEventDate().toDate()));
-            } else {
-                b.tvDate.setText("");
-            }
+        void bind(@NonNull Movie movie) {
+            b.tvTitle.setText(movie.getTitle());
+            b.chipStatus.setText(movie.getStatus());
+
+            String genre = movie.getGenre() != null ? movie.getGenre() : "";
+            String duration = movie.getFormattedDuration();
+            String meta = (!genre.isEmpty() && !duration.isEmpty())
+                    ? genre + " · " + duration
+                    : genre + duration;
+            b.tvMeta.setText(meta);
+
             Glide.with(b.ivThumb.getContext())
-                    .load(event.getImageUrl())
+                    .load(movie.getPosterUrl())
                     .placeholder(R.color.slate_200)
                     .error(R.color.slate_200)
                     .centerCrop()
                     .into(b.ivThumb);
 
-            b.btnMore.setOnClickListener(v -> listener.onEventOptions(event));
-            b.getRoot().setOnClickListener(v -> listener.onEventOptions(event));
+            b.btnMore.setOnClickListener(v -> listener.onMovieOptions(movie));
+            b.getRoot().setOnClickListener(v -> listener.onMovieOptions(movie));
         }
     }
 
-    private static final DiffUtil.ItemCallback<Event> DIFF =
-            new DiffUtil.ItemCallback<Event>() {
+    private static final DiffUtil.ItemCallback<Movie> DIFF =
+            new DiffUtil.ItemCallback<Movie>() {
                 @Override
-                public boolean areItemsTheSame(@NonNull Event a, @NonNull Event b) {
-                    return a.getEventId() != null && a.getEventId().equals(b.getEventId());
+                public boolean areItemsTheSame(@NonNull Movie a, @NonNull Movie b) {
+                    return a.getMovieId() != null && a.getMovieId().equals(b.getMovieId());
                 }
                 @Override
-                public boolean areContentsTheSame(@NonNull Event a, @NonNull Event b) {
+                public boolean areContentsTheSame(@NonNull Movie a, @NonNull Movie b) {
                     return a.getTitle() != null && a.getTitle().equals(b.getTitle())
                             && a.getStatus() != null && a.getStatus().equals(b.getStatus());
                 }

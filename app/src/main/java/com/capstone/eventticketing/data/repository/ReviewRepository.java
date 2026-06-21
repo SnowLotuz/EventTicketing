@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.data.model.Review;
 import com.capstone.eventticketing.util.Resource;
 import com.google.firebase.Timestamp;
@@ -18,16 +18,19 @@ import com.google.firebase.firestore.Query;
 import java.util.List;
 
 /**
- * Owns the {@code Reviews} collection and the event rating aggregate. Submitting
- * a review runs in a transaction that writes the review AND updates the event's
+ * Owns the {@code Reviews} collection and the movie rating aggregate. Submitting
+ * a review runs in a transaction that writes the review AND updates the movie's
  * running average atomically, so the displayed rating can never drift from the
- * actual reviews. Also enforces one review per user per event.
+ * actual reviews. Also enforces one review per user per movie.
+ *
+ * <p>Note: the {@code eventId} field on Review and the {@code FIELD_EVENT_ID}
+ * query key both hold a MOVIE id — kept as-is to avoid touching the transaction.
  */
 public class ReviewRepository {
 
-    private static final String EVENTS_COLLECTION = "events";
+    private static final String MOVIES_COLLECTION = "movies";
     private static final String REVIEWS_COLLECTION = "reviews";
-    private static final String FIELD_EVENT_ID = "eventId";
+    private static final String FIELD_EVENT_ID = "eventId";   // holds movieId
     private static final String FIELD_USER_ID = "userId";
     private static final String FIELD_CREATED_AT = "createdAt";
 
@@ -45,12 +48,10 @@ public class ReviewRepository {
     }
 
     /**
-     * Checks whether the current user has already reviewed an event, so the UI
+     * Checks whether the current user has already reviewed a movie, so the UI
      * doesn't prompt twice.
-     *
-     * @return LiveData emitting Success(true) if a review exists, else Success(false).
      */
-    public LiveData<Resource<Boolean>> hasUserReviewed(@NonNull String eventId) {
+    public LiveData<Resource<Boolean>> hasUserReviewed(@NonNull String movieId) {
         MutableLiveData<Resource<Boolean>> result = new MutableLiveData<>();
         result.setValue(Resource.loading());
 
@@ -61,7 +62,7 @@ public class ReviewRepository {
         }
 
         firestore.collection(REVIEWS_COLLECTION)
-                .whereEqualTo(FIELD_EVENT_ID, eventId)
+                .whereEqualTo(FIELD_EVENT_ID, movieId)
                 .whereEqualTo(FIELD_USER_ID, uid)
                 .limit(1)
                 .get()
@@ -72,15 +73,13 @@ public class ReviewRepository {
         return result;
     }
 
-    /**
-     * Fetches reviews for an event, newest first, for the detail screen's list.
-     */
-    public LiveData<Resource<List<Review>>> getReviewsForEvent(@NonNull String eventId) {
+    /** Fetches reviews for a movie, newest first, for the detail screen's list. */
+    public LiveData<Resource<List<Review>>> getReviewsForEvent(@NonNull String movieId) {
         MutableLiveData<Resource<List<Review>>> result = new MutableLiveData<>();
         result.setValue(Resource.loading());
 
         firestore.collection(REVIEWS_COLLECTION)
-                .whereEqualTo(FIELD_EVENT_ID, eventId)
+                .whereEqualTo(FIELD_EVENT_ID, movieId)
                 .orderBy(FIELD_CREATED_AT, Query.Direction.DESCENDING)
                 .get()
                 .addOnSuccessListener(snap -> result.setValue(
@@ -92,13 +91,10 @@ public class ReviewRepository {
     }
 
     /**
-     * Submits a review and updates the event's rating aggregate in one transaction.
+     * Submits a review and updates the movie's rating aggregate in one transaction.
      * Uses the incremental-average formula so no full re-read of reviews is needed.
-     * Aborts if the user has somehow already reviewed (defense against double-submit).
-     *
-     * @return LiveData emitting Loading then Success(true) or Error.
      */
-    public LiveData<Resource<Boolean>> submitReview(@NonNull String eventId,
+    public LiveData<Resource<Boolean>> submitReview(@NonNull String movieId,
                                                     @NonNull String userName,
                                                     int rating,
                                                     @NonNull String comment) {
@@ -115,39 +111,34 @@ public class ReviewRepository {
             return result;
         }
 
-        final DocumentReference eventRef =
-                firestore.collection(EVENTS_COLLECTION).document(eventId);
+        final DocumentReference movieRef =
+                firestore.collection(MOVIES_COLLECTION).document(movieId);
         final DocumentReference reviewRef =
-                firestore.collection(REVIEWS_COLLECTION).document(); // pre-generated ID
+                firestore.collection(REVIEWS_COLLECTION).document();
 
         firestore.runTransaction(transaction -> {
-                    // READ: current event + its aggregate.
-                    DocumentSnapshot eventSnap = transaction.get(eventRef);
-                    if (!eventSnap.exists()) {
-                        throw new FirebaseFirestoreException("Event no longer exists.",
+                    DocumentSnapshot movieSnap = transaction.get(movieRef);
+                    if (!movieSnap.exists()) {
+                        throw new FirebaseFirestoreException("Movie no longer exists.",
                                 FirebaseFirestoreException.Code.ABORTED);
                     }
-                    Event event = eventSnap.toObject(Event.class);
+                    Movie movie = movieSnap.toObject(Movie.class);
                     double currentAvg = 0d;
                     int currentCount = 0;
-                    if (event != null && event.getRating() != null) {
-                        currentAvg = event.getRating().getAverageScore();
-                        currentCount = event.getRating().getTotalReviews();
+                    if (movie != null && movie.getRating() != null) {
+                        currentAvg = movie.getRating().getAverageScore();
+                        currentCount = movie.getRating().getTotalReviews();
                     }
 
-                    // COMPUTE: incremental running average.
                     int newCount = currentCount + 1;
                     double newAvg = ((currentAvg * currentCount) + rating) / newCount;
-                    // Round to one decimal place for clean display.
                     newAvg = Math.round(newAvg * 10d) / 10d;
 
-                    // WRITE: the review document.
-                    Review review = new Review(eventId, uid, userName, rating, comment.trim());
+                    Review review = new Review(movieId, uid, userName, rating, comment.trim());
                     review.setCreatedAt(Timestamp.now());
                     transaction.set(reviewRef, review);
 
-                    // WRITE: the event aggregate (nested map fields via dot-paths).
-                    transaction.update(eventRef,
+                    transaction.update(movieRef,
                             "rating.averageScore", newAvg,
                             "rating.totalReviews", newCount);
 
@@ -161,9 +152,9 @@ public class ReviewRepository {
 
     /**
      * @return Success(true) if the current user has a CHECKED-IN ticket for the
-     * event (i.e. they attended), else Success(false).
+     * movie (i.e. they attended), else Success(false).
      */
-    public LiveData<Resource<Boolean>> hasAttended(@NonNull String eventId) {
+    public LiveData<Resource<Boolean>> hasAttended(@NonNull String movieId) {
         MutableLiveData<Resource<Boolean>> result = new MutableLiveData<>();
         result.setValue(Resource.loading());
 
@@ -174,7 +165,7 @@ public class ReviewRepository {
         }
 
         firestore.collection("tickets")
-                .whereEqualTo(FIELD_EVENT_ID, eventId)
+                .whereEqualTo(FIELD_EVENT_ID, movieId)
                 .whereEqualTo(FIELD_USER_ID, uid)
                 .whereEqualTo("isCheckedIn", true)
                 .limit(1)

@@ -13,7 +13,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.ActivityAdminEventsBinding;
 import com.capstone.eventticketing.util.Resource;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -21,8 +21,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import java.util.List;
 
 /**
- * Admin event-management list. Shows every event and, per event, an action sheet
- * to Edit, Scan tickets (launches {@link CheckInActivity} scoped to the event),
+ * Admin movie-management list. Shows every movie and, per movie, an action sheet
+ * to Edit, Scan tickets (launches {@link CheckInActivity} scoped to the movie),
  * or Delete (with confirmation). Pure View — all data work is in
  * {@link AdminEventsViewModel}.
  */
@@ -53,12 +53,11 @@ public class AdminEventsActivity extends AppCompatActivity
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh on return (e.g. after editing) so changes show immediately.
         viewModel.refresh();
     }
 
     private void observeViewModel() {
-        viewModel.getEvents().observe(this, resource -> {
+        viewModel.getMovies().observe(this, resource -> {
             if (resource == null) return;
             switch (resource.status) {
                 case LOADING:
@@ -92,55 +91,54 @@ public class AdminEventsActivity extends AppCompatActivity
         });
     }
 
-    private void renderList(List<Event> events) {
-        if (events == null || events.isEmpty()) {
+    private void renderList(List<Movie> movies) {
+        if (movies == null || movies.isEmpty()) {
             binding.rvEvents.setVisibility(View.GONE);
             binding.layoutEmpty.setVisibility(View.VISIBLE);
         } else {
             binding.rvEvents.setVisibility(View.VISIBLE);
             binding.layoutEmpty.setVisibility(View.GONE);
-            adapter.submitList(events);
+            adapter.submitList(movies);
         }
     }
 
     @Override
-    public void onEventOptions(@NonNull Event event) {
-        if (event.getEventId() == null) return;
-        showActionSheet(event);
+    public void onMovieOptions(@NonNull Movie movie) {
+        if (movie.getMovieId() == null) return;
+        showActionSheet(movie);
     }
 
-    private void showActionSheet(@NonNull Event event) {
+    private void showActionSheet(@NonNull Movie movie) {
         BottomSheetDialog sheet = new BottomSheetDialog(this);
         View content = LayoutInflater.from(this).inflate(R.layout.sheet_event_actions, null);
         sheet.setContentView(content);
 
-        ((TextView) content.findViewById(R.id.tv_sheet_title)).setText(event.getTitle());
+        ((TextView) content.findViewById(R.id.tv_sheet_title)).setText(movie.getTitle());
 
         content.findViewById(R.id.action_edit).setOnClickListener(v -> {
             sheet.dismiss();
-            startActivity(EditEventActivity.newIntent(this, event.getEventId()));
+            startActivity(EditEventActivity.newIntent(this, movie.getMovieId()));
         });
 
         content.findViewById(R.id.action_scan).setOnClickListener(v -> {
             sheet.dismiss();
-            // The scanner's proper, event-scoped launch point.
-            startActivity(CheckInActivity.newIntent(this, event.getEventId()));
+            startActivity(CheckInActivity.newIntent(this, movie.getMovieId()));
         });
 
         content.findViewById(R.id.action_delete).setOnClickListener(v -> {
             sheet.dismiss();
-            confirmDelete(event);
+            confirmDelete(movie);
         });
 
         sheet.show();
     }
 
-    private void confirmDelete(@NonNull Event event) {
+    private void confirmDelete(@NonNull Movie movie) {
         new AlertDialog.Builder(this)
                 .setTitle(R.string.admin_delete_confirm_title)
                 .setMessage(R.string.admin_delete_confirm_msg)
                 .setPositiveButton(R.string.admin_delete_confirm_yes,
-                        (d, w) -> viewModel.deleteEvent(event.getEventId()))
+                        (d, w) -> viewModel.deleteMovie(movie.getMovieId()))
                 .setNegativeButton(R.string.admin_delete_confirm_no, null)
                 .show();
     }

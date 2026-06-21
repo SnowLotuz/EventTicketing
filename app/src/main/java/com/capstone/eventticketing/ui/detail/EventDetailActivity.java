@@ -12,7 +12,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.ActivityEventDetailBinding;
 import com.capstone.eventticketing.util.Resource;
 import com.capstone.eventticketing.ui.seat.SeatSelectionActivity;
@@ -23,16 +23,15 @@ import java.text.SimpleDateFormat;
 import java.util.Locale;
 
 /**
- * Event details screen. Pure View: reads the {@code eventId} extra, hands it to
+ * Movie details screen. Pure View: reads the {@code movieId} extra, hands it to
  * {@link EventDetailViewModel} via its Factory, and renders observed state.
- * No Firestore logic lives here.
  */
 public class EventDetailActivity extends AppCompatActivity {
 
-    public static final String EXTRA_EVENT_ID = "extra_event_id";
+    public static final String EXTRA_EVENT_ID = "extra_event_id"; // holds movieId
 
     private static final SimpleDateFormat DATE_FORMAT =
-            new SimpleDateFormat("EEEE, dd MMMM yyyy · h:mm a", Locale.getDefault());
+            new SimpleDateFormat("dd MMMM yyyy", Locale.getDefault());
 
     private ActivityEventDetailBinding binding;
     private EventDetailViewModel viewModel;
@@ -43,13 +42,11 @@ public class EventDetailActivity extends AppCompatActivity {
     private RatingViewModel ratingViewModel;
     private String currentUserName = "";
 
-    // Thêm adapter cho Step 12
     private ReviewAdapter reviewAdapter;
 
-    /** Type-safe launcher used by callers (e.g. HomeFragment). */
-    public static Intent newIntent(@NonNull Context context, @NonNull String eventId) {
+    public static Intent newIntent(@NonNull Context context, @NonNull String movieId) {
         Intent intent = new Intent(context, EventDetailActivity.class);
-        intent.putExtra(EXTRA_EVENT_ID, eventId);
+        intent.putExtra(EXTRA_EVENT_ID, movieId);
         return intent;
     }
 
@@ -59,14 +56,14 @@ public class EventDetailActivity extends AppCompatActivity {
         binding = ActivityEventDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        String eventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
-        if (eventId == null || eventId.isEmpty()) {
+        String movieId = getIntent().getStringExtra(EXTRA_EVENT_ID);
+        if (movieId == null || movieId.isEmpty()) {
             Toast.makeText(this, R.string.detail_error, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        viewModel = new ViewModelProvider(this, new EventDetailViewModel.Factory(eventId))
+        viewModel = new ViewModelProvider(this, new EventDetailViewModel.Factory(movieId))
                 .get(EventDetailViewModel.class);
 
         ratingViewModel = new ViewModelProvider(this).get(RatingViewModel.class);
@@ -105,16 +102,16 @@ public class EventDetailActivity extends AppCompatActivity {
         binding.tvReadMore.setOnClickListener(v -> toggleDescription());
 
         binding.btnBuyTickets.setOnClickListener(v -> {
-            Resource<Event> current = viewModel.getEvent().getValue();
+            Resource<Movie> current = viewModel.getMovie().getValue();
             if (current != null && current.status == Resource.Status.SUCCESS
-                    && current.data != null && current.data.getEventId() != null) {
-                startActivity(SeatSelectionActivity.newIntent(this, current.data.getEventId()));
+                    && current.data != null && current.data.getMovieId() != null) {
+                startActivity(SeatSelectionActivity.newIntent(this, current.data.getMovieId()));
             }
         });
     }
 
     private void observeViewModel() {
-        viewModel.getEvent().observe(this, this::renderEvent);
+        viewModel.getMovie().observe(this, this::renderMovie);
 
         viewModel.getWishlistState().observe(this, resource -> {
             if (resource == null) return;
@@ -129,7 +126,6 @@ public class EventDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Listen to Reviews list
         viewModel.getReviews().observe(this, resource -> {
             if (resource == null) return;
             if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
@@ -138,7 +134,7 @@ public class EventDetailActivity extends AppCompatActivity {
         });
     }
 
-    private void renderEvent(Resource<Event> resource) {
+    private void renderMovie(Resource<Movie> resource) {
         if (resource == null) return;
         switch (resource.status) {
             case LOADING:
@@ -154,7 +150,7 @@ public class EventDetailActivity extends AppCompatActivity {
                 binding.layoutError.setVisibility(View.GONE);
                 binding.contentContainer.setVisibility(View.VISIBLE);
                 binding.bottomBar.setVisibility(View.VISIBLE);
-                bindEvent(resource.data);
+                bindMovie(resource.data);
                 break;
             case ERROR:
                 binding.shimmerDetail.stopShimmer();
@@ -167,34 +163,33 @@ public class EventDetailActivity extends AppCompatActivity {
         }
     }
 
-    private void bindEvent(Event event) {
-        if (event == null) return;
+    private void bindMovie(Movie movie) {
+        if (movie == null) return;
 
-        binding.collapsingToolbar.setTitle(event.getTitle());
-        binding.tvTitle.setText(event.getTitle());
-        binding.chipCategory.setText(event.getCategory());
-        binding.tvVenue.setText(event.getVenue());
-        binding.tvDescription.setText(event.getDescription());
+        binding.collapsingToolbar.setTitle(movie.getTitle());
+        binding.tvTitle.setText(movie.getTitle());
+        binding.chipCategory.setText(movie.getGenre());
+        binding.tvVenue.setText(movie.getFormattedDuration());   // duration in the old "venue" row
+        binding.tvDescription.setText(movie.getDescription());
 
-        if (event.getEventDate() != null) {
-            binding.tvDate.setText(DATE_FORMAT.format(event.getEventDate().toDate()));
+        if (movie.getReleaseDate() != null) {
+            binding.tvDate.setText(getString(R.string.detail_released_on,
+                    DATE_FORMAT.format(movie.getReleaseDate().toDate())));
         }
 
-        // Rating (Small row near title)
-        if (event.getRating() != null && event.getRating().getTotalReviews() > 0) {
+        if (movie.getRating() != null && movie.getRating().getTotalReviews() > 0) {
             binding.tvRating.setText(String.format(Locale.getDefault(), "%.1f (%d reviews)",
-                    event.getRating().getAverageScore(), event.getRating().getTotalReviews()));
+                    movie.getRating().getAverageScore(), movie.getRating().getTotalReviews()));
             binding.icStar.setVisibility(View.VISIBLE);
             binding.tvRating.setVisibility(View.VISIBLE);
         } else {
             binding.tvRating.setText(R.string.detail_no_reviews);
         }
 
-        // Reviews-section aggregate (live averageScore maintained by the rating transaction).
-        if (event.getRating() != null && event.getRating().getTotalReviews() > 0) {
+        if (movie.getRating() != null && movie.getRating().getTotalReviews() > 0) {
             binding.tvAvgScore.setText(String.format(Locale.getDefault(), "%.1f",
-                    event.getRating().getAverageScore()));
-            int count = event.getRating().getTotalReviews();
+                    movie.getRating().getAverageScore()));
+            int count = movie.getRating().getTotalReviews();
             binding.tvReviewCount.setText(getResources().getQuantityString(
                     R.plurals.review_count, count, count));
             binding.layoutRatingSummary.setVisibility(View.VISIBLE);
@@ -202,28 +197,25 @@ public class EventDetailActivity extends AppCompatActivity {
             binding.layoutRatingSummary.setVisibility(View.GONE);
         }
 
-        // Price
-        if (event.getSeatMap() != null && event.getSeatMap().getLowestPrice() > 0) {
+        if (movie.getSeatMap() != null && movie.getSeatMap().getLowestPrice() > 0) {
             binding.tvPrice.setText(String.format(Locale.getDefault(),
-                    "$%.2f", event.getSeatMap().getLowestPrice()));
+                    "$%.2f", movie.getSeatMap().getLowestPrice()));
         } else {
             binding.tvPrice.setText(R.string.price_free);
         }
 
-        // Post-event rating: prompt if eligible (ENDED + attended + not yet reviewed).
-        if (event.isEnded()) {
-            ratingViewModel.checkEligibility(event.getEventId(), true);
+        if (movie.isEnded()) {
+            ratingViewModel.checkEligibility(movie.getMovieId(), true);
         }
 
         Glide.with(this)
-                .load(event.getImageUrl())
+                .load(movie.getPosterUrl())
                 .placeholder(R.color.slate_200)
                 .error(R.color.slate_200)
                 .centerCrop()
                 .into(binding.ivHeroImage);
     }
 
-    // Render reviews list
     private void renderReviews(@NonNull java.util.List<com.capstone.eventticketing.data.model.Review> reviews) {
         if (reviews.isEmpty()) {
             binding.rvReviews.setVisibility(View.GONE);
@@ -257,13 +249,10 @@ public class EventDetailActivity extends AppCompatActivity {
             if (Boolean.TRUE.equals(shouldPrompt)) {
                 RatingDialogFragment dialog = RatingDialogFragment.newInstance(
                         getIntent().getStringExtra(EXTRA_EVENT_ID), currentUserName);
-
-                // Thay đổi cho Step 12: Reload cả Event và Reviews
                 dialog.setOnReviewSubmittedListener(() -> {
-                    viewModel.loadEvent();    // refreshes the aggregate average
-                    viewModel.loadReviews();  // refreshes the visible list
+                    viewModel.loadEvent();
+                    viewModel.loadReviews();
                 });
-
                 dialog.show(getSupportFragmentManager(), "rating_dialog");
             }
         });

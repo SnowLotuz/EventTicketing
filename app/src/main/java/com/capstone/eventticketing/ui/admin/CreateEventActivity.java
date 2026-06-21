@@ -1,7 +1,6 @@
 package com.capstone.eventticketing.ui.admin;
 
 import android.app.DatePickerDialog;
-import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
@@ -20,20 +19,22 @@ import java.util.Calendar;
 import java.util.Locale;
 
 /**
- * Admin event-creation form. Pure View: collects input, drives native date/time
- * pickers, and delegates validation + persistence to {@link CreateEventViewModel}.
+ * Admin movie-creation form. Pure View: collects input, drives the native date
+ * picker, and delegates validation + persistence to {@link CreateEventViewModel}.
+ * Cinema capacity is fixed (150) so there is no capacity input.
  */
 public class CreateEventActivity extends AppCompatActivity {
 
-    private static final String[] CATEGORIES = {"Music", "Sports", "Theater"};
+    private static final String[] GENRES =
+            {"Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Animation", "Thriller", "Romance"};
     private static final SimpleDateFormat DISPLAY_FORMAT =
-            new SimpleDateFormat("EEE, dd MMM yyyy · h:mm a", Locale.getDefault());
+            new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
 
     private ActivityCreateEventBinding binding;
     private CreateEventViewModel viewModel;
 
-    private final Calendar selectedDateTime = Calendar.getInstance();
-    private boolean dateTimePicked = false;
+    private final Calendar selectedDate = Calendar.getInstance();
+    private boolean datePicked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,8 +45,8 @@ public class CreateEventActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(CreateEventViewModel.class);
 
         setupToolbar();
-        setupCategoryDropdown();
-        setupDateTimePicker();
+        setupGenreDropdown();
+        setupDatePicker();
         setupSaveButton();
         observeViewModel();
     }
@@ -54,50 +55,39 @@ public class CreateEventActivity extends AppCompatActivity {
         binding.toolbar.setNavigationOnClickListener(v -> finish());
     }
 
-    private void setupCategoryDropdown() {
-        MaterialAutoCompleteTextView dropdown = binding.actCategory;
-        dropdown.setSimpleItems(CATEGORIES);
+    private void setupGenreDropdown() {
+        MaterialAutoCompleteTextView dropdown = binding.actGenre;
+        dropdown.setSimpleItems(GENRES);
     }
 
-    /** Chains a DatePicker into a TimePicker, then writes the formatted value. */
-    private void setupDateTimePicker() {
-        binding.etDatetime.setOnClickListener(v -> showDatePicker());
-        binding.tilDatetime.setEndIconOnClickListener(v -> showDatePicker());
+    private void setupDatePicker() {
+        binding.etReleaseDate.setOnClickListener(v -> showDatePicker());
+        binding.tilReleaseDate.setEndIconOnClickListener(v -> showDatePicker());
     }
 
     private void showDatePicker() {
         Calendar now = Calendar.getInstance();
         DatePickerDialog datePicker = new DatePickerDialog(this, (view, year, month, day) -> {
-            selectedDateTime.set(Calendar.YEAR, year);
-            selectedDateTime.set(Calendar.MONTH, month);
-            selectedDateTime.set(Calendar.DAY_OF_MONTH, day);
-            showTimePicker();
+            selectedDate.set(Calendar.YEAR, year);
+            selectedDate.set(Calendar.MONTH, month);
+            selectedDate.set(Calendar.DAY_OF_MONTH, day);
+            selectedDate.set(Calendar.HOUR_OF_DAY, 0);
+            selectedDate.set(Calendar.MINUTE, 0);
+            selectedDate.set(Calendar.SECOND, 0);
+            datePicked = true;
+            binding.etReleaseDate.setText(DISPLAY_FORMAT.format(selectedDate.getTime()));
         }, now.get(Calendar.YEAR), now.get(Calendar.MONTH), now.get(Calendar.DAY_OF_MONTH));
-        datePicker.getDatePicker().setMinDate(now.getTimeInMillis());
         datePicker.show();
     }
 
-    private void showTimePicker() {
-        Calendar now = Calendar.getInstance();
-        TimePickerDialog timePicker = new TimePickerDialog(this, (view, hour, minute) -> {
-            selectedDateTime.set(Calendar.HOUR_OF_DAY, hour);
-            selectedDateTime.set(Calendar.MINUTE, minute);
-            selectedDateTime.set(Calendar.SECOND, 0);
-            dateTimePicked = true;
-            binding.etDatetime.setText(DISPLAY_FORMAT.format(selectedDateTime.getTime()));
-        }, now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE), false);
-        timePicker.show();
-    }
-
     private void setupSaveButton() {
-        binding.btnSaveEvent.setOnClickListener(v -> viewModel.createEvent(
+        binding.btnSaveEvent.setOnClickListener(v -> viewModel.createMovie(
                 text(binding.etTitle),
-                text(binding.actCategory),
-                text(binding.etVenue),
+                text(binding.actGenre),
+                text(binding.etDuration),
                 text(binding.etDescription),
-                text(binding.etImageUrl),
-                dateTimePicked ? selectedDateTime.getTimeInMillis() : -1L,
-                text(binding.etCapacity),
+                text(binding.etPosterUrl),
+                datePicked ? selectedDate.getTimeInMillis() : -1L,
                 text(binding.etPrice)));
     }
 

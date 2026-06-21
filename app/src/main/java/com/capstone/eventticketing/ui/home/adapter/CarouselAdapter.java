@@ -10,14 +10,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.ItemCarouselEventBinding;
 
-/** Featured-events carousel adapter for the home ViewPager2. */
-public class CarouselAdapter extends ListAdapter<Event, CarouselAdapter.CarouselViewHolder> {
+/** Featured-movies carousel adapter for the home ViewPager2. */
+public class CarouselAdapter extends ListAdapter<Movie, CarouselAdapter.CarouselViewHolder> {
 
     public interface OnCarouselClickListener {
-        void onCarouselClick(@NonNull Event event);
+        void onCarouselClick(@NonNull Movie movie);
     }
 
     @NonNull private final OnCarouselClickListener listener;
@@ -48,28 +48,28 @@ public class CarouselAdapter extends ListAdapter<Event, CarouselAdapter.Carousel
             this.binding = binding;
         }
 
-        void bind(@NonNull Event event) {
-            binding.tvCarouselTitle.setText(event.getTitle());
+        void bind(@NonNull Movie movie) {
+            binding.tvCarouselTitle.setText(movie.getTitle());
             Glide.with(binding.ivCarouselImage.getContext())
-                    .load(event.getImageUrl())
+                    .load(movie.getPosterUrl())
                     .placeholder(R.color.slate_200)
                     .error(R.color.slate_200)
                     .centerCrop()
                     .into(binding.ivCarouselImage);
-            binding.getRoot().setOnClickListener(v -> listener.onCarouselClick(event));
+            binding.getRoot().setOnClickListener(v -> listener.onCarouselClick(movie));
         }
     }
 
-    private static final DiffUtil.ItemCallback<Event> DIFF_CALLBACK =
-            new DiffUtil.ItemCallback<Event>() {
+    private static final DiffUtil.ItemCallback<Movie> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<Movie>() {
                 @Override
-                public boolean areItemsTheSame(@NonNull Event oldItem, @NonNull Event newItem) {
-                    return oldItem.getEventId() != null
-                            && oldItem.getEventId().equals(newItem.getEventId());
+                public boolean areItemsTheSame(@NonNull Movie oldItem, @NonNull Movie newItem) {
+                    return oldItem.getMovieId() != null
+                            && oldItem.getMovieId().equals(newItem.getMovieId());
                 }
 
                 @Override
-                public boolean areContentsTheSame(@NonNull Event oldItem, @NonNull Event newItem) {
+                public boolean areContentsTheSame(@NonNull Movie oldItem, @NonNull Movie newItem) {
                     return oldItem.getTitle() != null && oldItem.getTitle().equals(newItem.getTitle());
                 }
             };

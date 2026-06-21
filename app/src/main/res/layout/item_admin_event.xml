@@ -25,11 +25,11 @@
 
         <ImageView
             android:id="@+id/iv_thumb"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="56dp"
+            android:layout_height="84dp"
             android:scaleType="centerCrop"
             android:background="@color/slate_200"
-            android:contentDescription="@string/cd_event_image"
+            android:contentDescription="@string/cd_movie_poster"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintBottom_toBottomOf="parent" />
@@ -39,7 +39,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
-            android:maxLines="1"
+            android:maxLines="2"
             android:ellipsize="end"
             android:textColor="@color/slate_900"
             android:textSize="16sp"
@@ -47,10 +47,10 @@
             app:layout_constraintTop_toTopOf="@id/iv_thumb"
             app:layout_constraintStart_toEndOf="@id/iv_thumb"
             app:layout_constraintEnd_toStartOf="@id/btn_more"
-            tools:text="Coldplay World Tour" />
+            tools:text="Dune: Part Two" />
 
         <TextView
-            android:id="@+id/tv_date"
+            android:id="@+id/tv_meta"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
@@ -62,7 +62,7 @@
             app:layout_constraintTop_toBottomOf="@id/tv_title"
             app:layout_constraintStart_toEndOf="@id/iv_thumb"
             app:layout_constraintEnd_toStartOf="@id/btn_more"
-            tools:text="Sat, 12 Jul 2025" />
+            tools:text="Sci-Fi · 2h 46m" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_status"
@@ -74,9 +74,9 @@
             app:chipMinHeight="24dp"
             app:chipStrokeWidth="0dp"
             app:ensureMinTouchTargetSize="false"
-            app:layout_constraintTop_toBottomOf="@id/tv_date"
+            app:layout_constraintTop_toBottomOf="@id/tv_meta"
             app:layout_constraintStart_toEndOf="@id/iv_thumb"
-            tools:text="UPCOMING" />
+            tools:text="NOW SHOWING" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_more"

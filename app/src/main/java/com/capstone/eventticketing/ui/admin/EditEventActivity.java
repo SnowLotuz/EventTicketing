@@ -1,7 +1,6 @@
 package com.capstone.eventticketing.ui.admin;
 
 import android.app.DatePickerDialog;
-import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.ActivityEditEventBinding;
 import com.capstone.eventticketing.util.Resource;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -26,20 +25,21 @@ public class EditEventActivity extends AppCompatActivity {
 
     public static final String EXTRA_EVENT_ID = "extra_event_id";
 
-    private static final String[] CATEGORIES = {"Music", "Sports", "Theater"};
+    private static final String[] GENRES =
+            {"Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Animation", "Thriller", "Romance"};
     private static final SimpleDateFormat DISPLAY_FORMAT =
-            new SimpleDateFormat("EEE, dd MMM yyyy · h:mm a", Locale.getDefault());
+            new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
 
     private ActivityEditEventBinding binding;
     private EditEventViewModel viewModel;
 
-    private final Calendar selectedDateTime = Calendar.getInstance();
-    private boolean dateTimePicked = false;
-    private String currentStatus = Event.STATUS_UPCOMING;
+    private final Calendar selectedDate = Calendar.getInstance();
+    private boolean datePicked = false;
+    private String currentStatus = Movie.STATUS_NOW_SHOWING;
 
-    public static Intent newIntent(@NonNull Context context, @NonNull String eventId) {
+    public static Intent newIntent(@NonNull Context context, @NonNull String movieId) {
         Intent intent = new Intent(context, EditEventActivity.class);
-        intent.putExtra(EXTRA_EVENT_ID, eventId);
+        intent.putExtra(EXTRA_EVENT_ID, movieId);
         return intent;
     }
 
@@ -49,21 +49,21 @@ public class EditEventActivity extends AppCompatActivity {
         binding = ActivityEditEventBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        String eventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
-        if (eventId == null || eventId.isEmpty()) {
+        String movieId = getIntent().getStringExtra(EXTRA_EVENT_ID);
+        if (movieId == null || movieId.isEmpty()) {
             Toast.makeText(this, R.string.detail_error, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        viewModel = new ViewModelProvider(this, new EditEventViewModel.Factory(eventId))
+        viewModel = new ViewModelProvider(this, new EditEventViewModel.Factory(movieId))
                 .get(EditEventViewModel.class);
 
         binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        ((MaterialAutoCompleteTextView) binding.actCategory).setSimpleItems(CATEGORIES);
+        ((MaterialAutoCompleteTextView) binding.actGenre).setSimpleItems(GENRES);
         setupStatusChips();
-        setupDateTimePicker();
+        setupDatePicker();
         binding.btnSaveEvent.setOnClickListener(v -> save());
 
         observeViewModel();
@@ -73,33 +73,33 @@ public class EditEventActivity extends AppCompatActivity {
         binding.chipGroupStatus.setOnCheckedStateChangeListener((group, checkedIds) -> {
             if (checkedIds.isEmpty()) return;
             int id = checkedIds.get(0);
-            if (id == R.id.chip_upcoming) {
-                currentStatus = Event.STATUS_UPCOMING;
-            } else if (id == R.id.chip_ongoing) {
-                currentStatus = Event.STATUS_ONGOING;
+            if (id == R.id.chip_now_showing) {
+                currentStatus = Movie.STATUS_NOW_SHOWING;
+            } else if (id == R.id.chip_coming_soon) {
+                currentStatus = Movie.STATUS_COMING_SOON;
             } else if (id == R.id.chip_ended) {
-                currentStatus = Event.STATUS_ENDED;
+                currentStatus = Movie.STATUS_ENDED;
             }
         });
     }
 
     private void selectStatusChip(@NonNull String status) {
         switch (status) {
-            case Event.STATUS_ONGOING:
-                binding.chipOngoing.setChecked(true);
+            case Movie.STATUS_COMING_SOON:
+                binding.chipComingSoon.setChecked(true);
                 break;
-            case Event.STATUS_ENDED:
+            case Movie.STATUS_ENDED:
                 binding.chipEnded.setChecked(true);
                 break;
-            case Event.STATUS_UPCOMING:
+            case Movie.STATUS_NOW_SHOWING:
             default:
-                binding.chipUpcoming.setChecked(true);
+                binding.chipNowShowing.setChecked(true);
                 break;
         }
     }
 
     private void observeViewModel() {
-        viewModel.getEvent().observe(this, resource -> {
+        viewModel.getMovie().observe(this, resource -> {
             if (resource == null) return;
             if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
                 prefill(resource.data);
@@ -132,64 +132,57 @@ public class EditEventActivity extends AppCompatActivity {
         });
     }
 
-    private void prefill(@NonNull Event event) {
-        binding.etTitle.setText(event.getTitle());
-        binding.actCategory.setText(event.getCategory(), false);
-        binding.etVenue.setText(event.getVenue());
-        binding.etDescription.setText(event.getDescription());
-        binding.etImageUrl.setText(event.getImageUrl());
+    private void prefill(@NonNull Movie movie) {
+        binding.etTitle.setText(movie.getTitle());
+        binding.actGenre.setText(movie.getGenre(), false);
+        binding.etDuration.setText(movie.getDurationMinutes() > 0
+                ? String.valueOf(movie.getDurationMinutes()) : "");
+        binding.etDescription.setText(movie.getDescription());
+        binding.etPosterUrl.setText(movie.getPosterUrl());
 
-        currentStatus = event.getStatus() != null ? event.getStatus() : Event.STATUS_UPCOMING;
+        currentStatus = movie.getStatus() != null ? movie.getStatus() : Movie.STATUS_NOW_SHOWING;
         selectStatusChip(currentStatus);
 
-        if (event.getSeatMap() != null) {
-            binding.etCapacity.setText(String.valueOf(event.getSeatMap().getTotalCapacity()));
+        if (movie.getSeatMap() != null) {
             binding.etPrice.setText(String.format(Locale.getDefault(), "%.2f",
-                    event.getSeatMap().getLowestPrice()));
+                    movie.getSeatMap().getLowestPrice()));
         }
 
-        if (event.getEventDate() != null) {
-            selectedDateTime.setTime(event.getEventDate().toDate());
-            dateTimePicked = true;
-            binding.etDatetime.setText(DISPLAY_FORMAT.format(selectedDateTime.getTime()));
+        if (movie.getReleaseDate() != null) {
+            selectedDate.setTime(movie.getReleaseDate().toDate());
+            datePicked = true;
+            binding.etReleaseDate.setText(DISPLAY_FORMAT.format(selectedDate.getTime()));
         }
     }
 
-    private void setupDateTimePicker() {
-        binding.etDatetime.setOnClickListener(v -> showDatePicker());
-        binding.tilDatetime.setEndIconOnClickListener(v -> showDatePicker());
+    private void setupDatePicker() {
+        binding.etReleaseDate.setOnClickListener(v -> showDatePicker());
+        binding.tilReleaseDate.setEndIconOnClickListener(v -> showDatePicker());
     }
 
     private void showDatePicker() {
         DatePickerDialog dp = new DatePickerDialog(this, (view, y, m, d) -> {
-            selectedDateTime.set(Calendar.YEAR, y);
-            selectedDateTime.set(Calendar.MONTH, m);
-            selectedDateTime.set(Calendar.DAY_OF_MONTH, d);
-            showTimePicker();
-        }, selectedDateTime.get(Calendar.YEAR), selectedDateTime.get(Calendar.MONTH),
-                selectedDateTime.get(Calendar.DAY_OF_MONTH));
+            selectedDate.set(Calendar.YEAR, y);
+            selectedDate.set(Calendar.MONTH, m);
+            selectedDate.set(Calendar.DAY_OF_MONTH, d);
+            selectedDate.set(Calendar.HOUR_OF_DAY, 0);
+            selectedDate.set(Calendar.MINUTE, 0);
+            selectedDate.set(Calendar.SECOND, 0);
+            datePicked = true;
+            binding.etReleaseDate.setText(DISPLAY_FORMAT.format(selectedDate.getTime()));
+        }, selectedDate.get(Calendar.YEAR), selectedDate.get(Calendar.MONTH),
+                selectedDate.get(Calendar.DAY_OF_MONTH));
         dp.show();
-    }
-
-    private void showTimePicker() {
-        TimePickerDialog tp = new TimePickerDialog(this, (view, h, min) -> {
-            selectedDateTime.set(Calendar.HOUR_OF_DAY, h);
-            selectedDateTime.set(Calendar.MINUTE, min);
-            selectedDateTime.set(Calendar.SECOND, 0);
-            dateTimePicked = true;
-            binding.etDatetime.setText(DISPLAY_FORMAT.format(selectedDateTime.getTime()));
-        }, selectedDateTime.get(Calendar.HOUR_OF_DAY), selectedDateTime.get(Calendar.MINUTE), false);
-        tp.show();
     }
 
     private void save() {
         viewModel.save(
                 text(binding.etTitle),
-                text(binding.actCategory),
-                text(binding.etVenue),
+                text(binding.actGenre),
+                text(binding.etDuration),
                 text(binding.etDescription),
-                text(binding.etImageUrl),
-                dateTimePicked ? selectedDateTime.getTimeInMillis() : -1L,
+                text(binding.etPosterUrl),
+                datePicked ? selectedDate.getTimeInMillis() : -1L,
                 currentStatus);
     }
 

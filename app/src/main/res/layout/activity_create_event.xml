@@ -18,7 +18,7 @@
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_arrow_back"
             app:navigationIconTint="@color/slate_900"
-            app:title="@string/create_event_title"
+            app:title="@string/create_movie_title"
             app:titleTextColor="@color/slate_900" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -43,7 +43,7 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/create_hint_title"
+                android:hint="@string/create_hint_movie_title"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
@@ -57,45 +57,46 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Category dropdown -->
+            <!-- Genre dropdown -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/til_category"
+                android:id="@+id/til_genre"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="@string/create_hint_category"
+                android:hint="@string/create_hint_genre"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusBottomEnd="12dp">
 
                 <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                    android:id="@+id/act_category"
+                    android:id="@+id/act_genre"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="none"
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Venue -->
+            <!-- Duration (minutes) -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/til_venue"
+                android:id="@+id/til_duration"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="@string/create_hint_venue"
+                android:hint="@string/create_hint_duration"
+                app:suffixText="@string/create_duration_suffix"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusBottomEnd="12dp">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_venue"
+                    android:id="@+id/et_duration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textCapWords"
+                    android:inputType="number"
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -122,35 +123,35 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Image URL -->
+            <!-- Poster URL -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/til_image_url"
+                android:id="@+id/til_poster_url"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="@string/create_hint_image_url"
+                android:hint="@string/create_hint_poster_url"
                 app:boxCornerRadiusTopStart="12dp"
                 app:boxCornerRadiusTopEnd="12dp"
                 app:boxCornerRadiusBottomStart="12dp"
                 app:boxCornerRadiusBottomEnd="12dp">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_image_url"
+                    android:id="@+id/et_poster_url"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="textUri"
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Date/Time picker (read-only, opens dialogs) -->
+            <!-- Release date (date only, opens date picker) -->
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/til_datetime"
+                android:id="@+id/til_release_date"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="@string/create_hint_datetime"
+                android:hint="@string/create_hint_release_date"
                 app:endIconMode="custom"
                 app:endIconDrawable="@drawable/ic_calendar"
                 app:endIconTint="@color/slate_400"
@@ -160,7 +161,7 @@
                 app:boxCornerRadiusBottomEnd="12dp">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_datetime"
+                    android:id="@+id/et_release_date"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:focusable="false"
@@ -170,56 +171,36 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Capacity + Base Price row -->
-            <LinearLayout
+            <!-- Ticket price. Capacity is fixed at 150 (cinema), so no capacity field. -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_price"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:orientation="horizontal">
+                android:hint="@string/create_hint_price"
+                app:prefixText="$"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp">
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_capacity"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_price"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:hint="@string/create_hint_capacity"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
+                    android:inputType="numberDecimal"
+                    android:textColor="@color/slate_900" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_capacity"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="number"
-                        android:textColor="@color/slate_900" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/til_price"
-                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:hint="@string/create_hint_price"
-                    app:prefixText="$"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusBottomEnd="12dp">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_price"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="numberDecimal"
-                        android:textColor="@color/slate_900" />
-                </com.google.android.material.textfield.TextInputLayout>
-            </LinearLayout>
+            <!-- Fixed-capacity note -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/create_capacity_note"
+                android:textColor="@color/slate_400"
+                android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_save_event"

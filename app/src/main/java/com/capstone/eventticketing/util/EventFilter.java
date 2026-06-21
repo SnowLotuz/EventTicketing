@@ -3,23 +3,26 @@ package com.capstone.eventticketing.util;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Immutable set of search/filter criteria plus a pure function to apply them.
- * Filtering is done in memory (Firestore cannot do substring search), which for
- * a catalog of this size is instant and far simpler than a search-service.
+ * Immutable set of search/filter criteria plus a pure function to apply them to
+ * movies. Filtering is done in memory (Firestore cannot do substring search),
+ * which for a catalog of this size is instant and far simpler than a search service.
+ *
+ * <p>Note: {@code category} maps to {@link Movie#getGenre()} and the date range
+ * maps to {@link Movie#getReleaseDate()}, so the existing filter sheet UI keeps working.
  */
 public final class EventFilter {
 
     public static final String CATEGORY_ALL = "All";
 
     @NonNull public final String query;          // title substring, may be empty
-    @NonNull public final String category;       // CATEGORY_ALL or a specific category
+    @NonNull public final String category;       // CATEGORY_ALL or a specific genre
     public final double minPrice;                // inclusive
     public final double maxPrice;                // inclusive
     public final long startDateMillis;           // 0 = no lower bound
@@ -57,45 +60,45 @@ public final class EventFilter {
 
     /**
      * Applies all criteria to a source list. Pure: no side effects, returns a
-     * new list. Each event must satisfy every active criterion (AND semantics).
+     * new list. Each movie must satisfy every active criterion (AND semantics).
      */
     @NonNull
-    public List<Event> apply(@Nullable List<Event> source) {
-        List<Event> out = new ArrayList<>();
+    public List<Movie> apply(@Nullable List<Movie> source) {
+        List<Movie> out = new ArrayList<>();
         if (source == null) return out;
 
         String q = query.trim().toLowerCase(Locale.getDefault());
 
-        for (Event e : source) {
-            if (!matchesQuery(e, q)) continue;
-            if (!matchesCategory(e)) continue;
-            if (!matchesPrice(e)) continue;
-            if (!matchesDate(e)) continue;
-            out.add(e);
+        for (Movie m : source) {
+            if (!matchesQuery(m, q)) continue;
+            if (!matchesGenre(m)) continue;
+            if (!matchesPrice(m)) continue;
+            if (!matchesDate(m)) continue;
+            out.add(m);
         }
         return out;
     }
 
-    private boolean matchesQuery(@NonNull Event e, @NonNull String q) {
+    private boolean matchesQuery(@NonNull Movie m, @NonNull String q) {
         if (q.isEmpty()) return true;
-        String title = e.getTitle() != null ? e.getTitle().toLowerCase(Locale.getDefault()) : "";
+        String title = m.getTitle() != null ? m.getTitle().toLowerCase(Locale.getDefault()) : "";
         return title.contains(q);
     }
 
-    private boolean matchesCategory(@NonNull Event e) {
+    private boolean matchesGenre(@NonNull Movie m) {
         if (CATEGORY_ALL.equals(category)) return true;
-        return category.equals(e.getCategory());
+        return category.equals(m.getGenre());
     }
 
-    private boolean matchesPrice(@NonNull Event e) {
-        double price = (e.getSeatMap() != null) ? e.getSeatMap().getLowestPrice() : 0d;
+    private boolean matchesPrice(@NonNull Movie m) {
+        double price = (m.getSeatMap() != null) ? m.getSeatMap().getLowestPrice() : 0d;
         return price >= minPrice && price <= maxPrice;
     }
 
-    private boolean matchesDate(@NonNull Event e) {
+    private boolean matchesDate(@NonNull Movie m) {
         if (startDateMillis == 0L && endDateMillis == 0L) return true;
-        if (e.getEventDate() == null) return false;
-        long t = e.getEventDate().toDate().getTime();
+        if (m.getReleaseDate() == null) return false;
+        long t = m.getReleaseDate().toDate().getTime();
         if (startDateMillis > 0L && t < startDateMillis) return false;
         if (endDateMillis > 0L && t > endDateMillis) return false;
         return true;

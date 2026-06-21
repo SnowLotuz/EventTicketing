@@ -6,8 +6,8 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.capstone.eventticketing.data.model.Event;
-import com.capstone.eventticketing.data.repository.EventRepository;
+import com.capstone.eventticketing.data.model.Movie;
+import com.capstone.eventticketing.data.repository.MovieRepository;
 import com.capstone.eventticketing.util.Resource;
 import com.capstone.eventticketing.data.model.Review;
 import com.capstone.eventticketing.data.repository.ReviewRepository;
@@ -15,53 +15,68 @@ import com.capstone.eventticketing.data.repository.ReviewRepository;
 import java.util.List;
 
 /**
- * Backs {@link EventDetailActivity}. Receives its {@code eventId} at construction
- * (via {@link Factory}) so the View never passes Intent extras into business
- * logic. Owns the event fetch and the wishlist state for this single event.
+ * Backs {@link EventDetailActivity}. Receives its {@code movieId} at construction
+ * (via {@link Factory}). Owns the movie fetch, the wishlist state, and reviews.
  */
 public class EventDetailViewModel extends ViewModel {
 
-    @NonNull private final EventRepository eventRepository;
-    @NonNull private final String eventId;
-    // Bỏ vào phần khai báo biến:
+    @NonNull private final MovieRepository movieRepository;
+    @NonNull private final String movieId;
     @NonNull private final ReviewRepository reviewRepository = new ReviewRepository();
 
-    private final MutableLiveData<Resource<Event>> event = new MutableLiveData<>();
+    private final MutableLiveData<Resource<Movie>> movie = new MutableLiveData<>();
     private final MutableLiveData<Resource<Boolean>> wishlistState = new MutableLiveData<>();
     private final MutableLiveData<Resource<List<Review>>> reviews = new MutableLiveData<>();
 
-    public EventDetailViewModel(@NonNull EventRepository eventRepository, @NonNull String eventId) {
-        this.eventRepository = eventRepository;
-        this.eventId = eventId;
+    public EventDetailViewModel(@NonNull MovieRepository movieRepository, @NonNull String movieId) {
+        this.movieRepository = movieRepository;
+        this.movieId = movieId;
         loadEvent();
         loadWishlistState();
     }
 
-    public LiveData<Resource<Event>> getEvent() { return event; }
+    public LiveData<Resource<Movie>> getMovie() { return movie; }
     public LiveData<Resource<Boolean>> getWishlistState() { return wishlistState; }
     public LiveData<Resource<List<Review>>> getReviews() { return reviews; }
 
-    /** Loads (or reloads, on retry) the event document. */
+    /** Loads (or reloads, on retry) the movie document. */
     public void loadEvent() {
-        forward(eventRepository.getEventById(eventId), event);
+        forward(movieRepository.getMovieById(movieId), movie);
     }
 
     private void loadWishlistState() {
-        forward(eventRepository.isEventWishlisted(eventId), wishlistState);
+        forward(isMovieWishlisted(), wishlistState);
     }
 
-    /** Loads (or reloads, after a new review) the reviews for this event. */
+    /** Reads the current user's wishlist and reports whether this movie is in it. */
+    private LiveData<Resource<Boolean>> isMovieWishlisted() {
+        MutableLiveData<Resource<Boolean>> out = new MutableLiveData<>();
+        out.setValue(Resource.loading());
+        LiveData<Resource<List<String>>> source = movieRepository.getWishlistIds();
+        source.observeForever(new androidx.lifecycle.Observer<Resource<List<String>>>() {
+            @Override
+            public void onChanged(Resource<List<String>> r) {
+                if (r == null || r.status == Resource.Status.LOADING) return;
+                source.removeObserver(this);
+                if (r.status == Resource.Status.SUCCESS) {
+                    boolean inList = r.data != null && r.data.contains(movieId);
+                    out.setValue(Resource.success(inList));
+                } else {
+                    out.setValue(Resource.error(r.message != null ? r.message : "Failed to load wishlist."));
+                }
+            }
+        });
+        return out;
+    }
+
+    /** Loads (or reloads, after a new review) the reviews for this movie. */
     public void loadReviews() {
-        forward(reviewRepository.getReviewsForEvent(eventId), reviews);
+        forward(reviewRepository.getReviewsForEvent(movieId), reviews);
     }
 
-    /**
-     * Toggles wishlist membership. {@code currentlyWishlisted} is the state the
-     * user sees; we write the opposite, then optimistically reflect it.
-     */
     public void toggleWishlist(boolean currentlyWishlisted) {
         boolean add = !currentlyWishlisted;
-        LiveData<Resource<Boolean>> source = eventRepository.toggleWishlist(eventId, add);
+        LiveData<Resource<Boolean>> source = movieRepository.toggleWishlist(movieId, add);
         source.observeForever(new androidx.lifecycle.Observer<Resource<Boolean>>() {
             @Override
             public void onChanged(Resource<Boolean> resource) {
@@ -77,7 +92,6 @@ public class EventDetailViewModel extends ViewModel {
         });
     }
 
-    /** Bridges a one-shot repository LiveData into a stable ViewModel-owned LiveData. */
     private <T> void forward(@NonNull LiveData<Resource<T>> source,
                              @NonNull MutableLiveData<Resource<T>> target) {
         target.setValue(Resource.loading());
@@ -91,15 +105,11 @@ public class EventDetailViewModel extends ViewModel {
         });
     }
 
-    /**
-     * Factory that injects the repository and the {@code eventId} from the Intent
-     * into the ViewModel, keeping construction testable and the View thin.
-     */
     public static class Factory implements ViewModelProvider.Factory {
-        @NonNull private final String eventId;
+        @NonNull private final String movieId;
 
-        public Factory(@NonNull String eventId) {
-            this.eventId = eventId;
+        public Factory(@NonNull String movieId) {
+            this.movieId = movieId;
         }
 
         @NonNull
@@ -107,7 +117,7 @@ public class EventDetailViewModel extends ViewModel {
         @SuppressWarnings("unchecked")
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (modelClass.isAssignableFrom(EventDetailViewModel.class)) {
-                return (T) new EventDetailViewModel(new EventRepository(), eventId);
+                return (T) new EventDetailViewModel(new MovieRepository(), movieId);
             }
             throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
         }

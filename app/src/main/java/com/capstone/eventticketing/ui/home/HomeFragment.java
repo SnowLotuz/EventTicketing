@@ -15,10 +15,10 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.capstone.eventticketing.R;
-import com.capstone.eventticketing.data.model.Event;
+import com.capstone.eventticketing.data.model.Movie;
 import com.capstone.eventticketing.databinding.FragmentHomeBinding;
 import com.capstone.eventticketing.ui.home.adapter.CarouselAdapter;
-import com.capstone.eventticketing.ui.home.adapter.EventAdapter;
+import com.capstone.eventticketing.ui.home.adapter.MovieAdapter;
 import com.capstone.eventticketing.util.Resource;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.tabs.TabLayoutMediator;
@@ -30,17 +30,18 @@ import java.util.HashSet;
 import java.util.List;
 
 public class HomeFragment extends Fragment implements
-        EventAdapter.OnEventInteractionListener,
+        MovieAdapter.OnMovieInteractionListener,
         CarouselAdapter.OnCarouselClickListener {
 
     private static final long CAROUSEL_AUTO_SCROLL_MS = 4000L;
-    private static final List<String> CATEGORIES =
-            Arrays.asList("All", "Music", "Sports", "Theater");
+    // Genre chips. Adjust these to whatever genres you seed in Firestore.
+    private static final List<String> GENRES =
+            Arrays.asList("All", "Action", "Comedy", "Drama", "Sci-Fi", "Horror");
 
     private FragmentHomeBinding binding;
     private HomeViewModel homeViewModel;
 
-    private EventAdapter eventAdapter;
+    private MovieAdapter movieAdapter;
     private CarouselAdapter carouselAdapter;
 
     private final Handler carouselHandler = new Handler(Looper.getMainLooper());
@@ -67,9 +68,9 @@ public class HomeFragment extends Fragment implements
     }
 
     private void setupRecyclerView() {
-        eventAdapter = new EventAdapter(this);
+        movieAdapter = new MovieAdapter(this);
         binding.rvEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
-        binding.rvEvents.setAdapter(eventAdapter);
+        binding.rvEvents.setAdapter(movieAdapter);
     }
 
     private void setupCarousel() {
@@ -80,17 +81,16 @@ public class HomeFragment extends Fragment implements
     }
 
     private void setupCategoryChips() {
-        for (String category : CATEGORIES) {
+        for (String genre : GENRES) {
             Chip chip = new Chip(requireContext());
-            chip.setText(category);
+            chip.setText(genre);
             chip.setCheckable(true);
-            chip.setChecked("All".equals(category));
+            chip.setChecked("All".equals(genre));
             chip.setChipBackgroundColorResource(R.color.chip_background_selector);
             chip.setTextColor(getResources().getColorStateList(R.color.chip_text_selector, null));
             chip.setChipStrokeWidth(0f);
             chip.setId(View.generateViewId());
-            // Nguyên bản của Claude: gọi hàm selectCategory, không cần chế gì thêm
-            chip.setOnClickListener(v -> homeViewModel.selectCategory(category));
+            chip.setOnClickListener(v -> homeViewModel.selectCategory(genre));
             binding.chipGroupCategories.addView(chip);
         }
     }
@@ -104,7 +104,6 @@ public class HomeFragment extends Fragment implements
             @Override public void afterTextChanged(android.text.Editable s) { }
         });
 
-        // The search field's end icon opens the deep-filter sheet.
         binding.tilSearch.setEndIconMode(
                 com.google.android.material.textfield.TextInputLayout.END_ICON_CUSTOM);
         binding.tilSearch.setEndIconDrawable(R.drawable.ic_filter);
@@ -120,11 +119,11 @@ public class HomeFragment extends Fragment implements
     }
 
     private void observeViewModel() {
-        homeViewModel.getEvents().observe(getViewLifecycleOwner(), this::renderEvents);
+        homeViewModel.getMovies().observe(getViewLifecycleOwner(), this::renderMovies);
 
         homeViewModel.getWishlistIds().observe(getViewLifecycleOwner(), resource -> {
             if (resource != null && resource.status == Resource.Status.SUCCESS && resource.data != null) {
-                eventAdapter.setWishlistedIds(new HashSet<>(resource.data));
+                movieAdapter.setWishlistedIds(new HashSet<>(resource.data));
             }
         });
 
@@ -135,7 +134,7 @@ public class HomeFragment extends Fragment implements
             } else if (resource.status == Resource.Status.SUCCESS) {
                 homeViewModel.getWishlistIds().observe(getViewLifecycleOwner(), r -> {
                     if (r != null && r.status == Resource.Status.SUCCESS && r.data != null) {
-                        eventAdapter.setWishlistedIds(new HashSet<>(r.data));
+                        movieAdapter.setWishlistedIds(new HashSet<>(r.data));
                     }
                 });
             }
@@ -143,7 +142,6 @@ public class HomeFragment extends Fragment implements
 
         homeViewModel.getFilter().observe(getViewLifecycleOwner(), filter -> {
             if (filter == null) return;
-            // Tint the filter icon when deep filters are active, as a visual cue.
             int tint = filter.hasActiveDeepFilters()
                     ? R.color.accent_blue : R.color.slate_400;
             binding.tilSearch.setEndIconTintList(
@@ -151,7 +149,7 @@ public class HomeFragment extends Fragment implements
         });
     }
 
-    private void renderEvents(@Nullable Resource<List<Event>> resource) {
+    private void renderMovies(@Nullable Resource<List<Movie>> resource) {
         if (resource == null) return;
         switch (resource.status) {
             case LOADING:
@@ -163,20 +161,21 @@ public class HomeFragment extends Fragment implements
             case SUCCESS:
                 binding.shimmerLayout.stopShimmer();
                 binding.shimmerLayout.setVisibility(View.GONE);
-                List<Event> events = resource.data;
-                if (events == null || events.isEmpty()) {
+                List<Movie> movies = resource.data;
+                if (movies == null || movies.isEmpty()) {
                     binding.rvEvents.setVisibility(View.GONE);
                     binding.layoutEmpty.setVisibility(View.VISIBLE);
 
-                    // Logic đổi câu thông báo của Claude
                     EventFilter current = homeViewModel.getFilter().getValue();
-                    boolean isFiltered = current != null && (!current.query.isEmpty() || current.hasActiveDeepFilters());
-                    binding.tvEmptyMessage.setText(isFiltered ? "No events match your filters" : "No upcoming events");
+                    boolean isFiltered = current != null
+                            && (!current.query.isEmpty() || current.hasActiveDeepFilters());
+                    binding.tvEmptyMessage.setText(
+                            isFiltered ? "No movies match your filters" : "No movies showing");
                 } else {
                     binding.rvEvents.setVisibility(View.VISIBLE);
                     binding.layoutEmpty.setVisibility(View.GONE);
-                    eventAdapter.submitList(events);
-                    updateCarousel(events);
+                    movieAdapter.submitList(movies);
+                    updateCarousel(movies);
                 }
                 break;
             case ERROR:
@@ -190,8 +189,8 @@ public class HomeFragment extends Fragment implements
         }
     }
 
-    private void updateCarousel(@NonNull List<Event> events) {
-        List<Event> featured = events.size() > 5 ? events.subList(0, 5) : events;
+    private void updateCarousel(@NonNull List<Movie> movies) {
+        List<Movie> featured = movies.size() > 5 ? movies.subList(0, 5) : movies;
         carouselAdapter.submitList(featured);
         startCarouselAutoScroll(featured.size());
     }
@@ -217,21 +216,21 @@ public class HomeFragment extends Fragment implements
     }
 
     @Override
-    public void onEventClick(@NonNull Event event) {
-        if (event.getEventId() == null) return;
-        startActivity(EventDetailActivity.newIntent(requireContext(), event.getEventId()));
+    public void onMovieClick(@NonNull Movie movie) {
+        if (movie.getMovieId() == null) return;
+        startActivity(EventDetailActivity.newIntent(requireContext(), movie.getMovieId()));
     }
 
     @Override
-    public void onWishlistToggle(@NonNull Event event, boolean isCurrentlyWishlisted) {
-        if (event.getEventId() == null) return;
-        homeViewModel.toggleWishlist(event.getEventId(), !isCurrentlyWishlisted);
+    public void onWishlistToggle(@NonNull Movie movie, boolean isCurrentlyWishlisted) {
+        if (movie.getMovieId() == null) return;
+        homeViewModel.toggleWishlist(movie.getMovieId(), !isCurrentlyWishlisted);
     }
 
     @Override
-    public void onCarouselClick(@NonNull Event event) {
-        if (event.getEventId() == null) return;
-        startActivity(EventDetailActivity.newIntent(requireContext(), event.getEventId()));
+    public void onCarouselClick(@NonNull Movie movie) {
+        if (movie.getMovieId() == null) return;
+        startActivity(EventDetailActivity.newIntent(requireContext(), movie.getMovieId()));
     }
 
     @Override

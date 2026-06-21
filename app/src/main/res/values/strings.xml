@@ -51,7 +51,6 @@
     <string name="create_hint_capacity">Capacity</string>
     <string name="create_hint_price">Base price</string>
     <string name="create_save">Save Movie</string>
-    <string name="create_success">Movie created successfully</string>
     <string name="seat_select_title">Select Seats</string>
     <string name="seat_stage">S C R E E N</string>
     <string name="seat_legend_available">Available</string>
@@ -160,6 +159,20 @@
     <string name="onboarding_desc_3">Access your QR tickets instantly — even offline at the venue.</string>
     <string name="hint_phone">Phone number</string>
     <string name="cd_movie_poster">Movie poster</string>
+    <string name="create_movie_title">Add Movie</string>
+    <string name="create_hint_movie_title">Movie title</string>
+    <string name="create_hint_genre">Genre</string>
+    <string name="create_hint_duration">Duration</string>
+    <string name="create_duration_suffix">min</string>
+    <string name="create_hint_poster_url">Poster image URL</string>
+    <string name="create_hint_release_date">Release date</string>
+    <string name="create_capacity_note">Cinema capacity is fixed at 150 seats (rows A–J × 1–15).</string>
+    <string name="create_success">Movie created successfully</string>
+    <string name="edit_movie_title">Edit Movie</string>
+    <string name="status_now_showing">Now Showing</string>
+    <string name="status_coming_soon">Coming Soon</string>
+    <string name="detail_released_on">Released %1$s</string>
+
 
     <plurals name="review_count">
         <item quantity="one">· %d review</item>
