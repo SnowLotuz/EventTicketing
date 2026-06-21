@@ -208,12 +208,48 @@ public class EventDetailActivity extends AppCompatActivity {
             ratingViewModel.checkEligibility(movie.getMovieId(), true);
         }
 
+        // ĐÃ SỬA: Thay thế khối Glide bằng hàm loadHero
+        loadHero(movie.getPosterUrl());
+    }
+
+    /**
+     * Loads the detail hero as two layers: a blurred, center-cropped backdrop
+     * that fills the app bar, and the full, sharp poster fitted on top. Gives an
+     * immersive frame while still showing the entire 2:3 poster. The blur uses a
+     * platform RenderEffect on API 31+ and falls back to the plain cropped image
+     * on older devices.
+     */
+    private void loadHero(@androidx.annotation.Nullable String posterUrl) {
+        // Sharp, whole poster on top.
         Glide.with(this)
-                .load(movie.getPosterUrl())
+                .load(posterUrl)
                 .placeholder(R.color.slate_200)
                 .error(R.color.slate_200)
-                .centerCrop()
+                .fitCenter()
                 .into(binding.ivHeroImage);
+
+        // Blurred backdrop behind it.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            binding.ivHeroBackdrop.setRenderEffect(
+                    android.graphics.RenderEffect.createBlurEffect(
+                            60f, 60f, android.graphics.Shader.TileMode.CLAMP));
+            Glide.with(this)
+                    .load(posterUrl)
+                    .placeholder(R.color.slate_900)
+                    .error(R.color.slate_900)
+                    .centerCrop()
+                    .into(binding.ivHeroBackdrop);
+        } else {
+            // Pre-API 31: no RenderEffect. Use the cropped image dimmed by the
+            // scrim as the frame — still reads as an intentional backdrop.
+            binding.ivHeroBackdrop.setRenderEffect(null);
+            Glide.with(this)
+                    .load(posterUrl)
+                    .placeholder(R.color.slate_900)
+                    .error(R.color.slate_900)
+                    .centerCrop()
+                    .into(binding.ivHeroBackdrop);
+        }
     }
 
     private void renderReviews(@NonNull java.util.List<com.capstone.eventticketing.data.model.Review> reviews) {

@@ -36,7 +36,7 @@ public class HomeFragment extends Fragment implements
     private static final long CAROUSEL_AUTO_SCROLL_MS = 4000L;
     // Genre chips. Adjust these to whatever genres you seed in Firestore.
     private static final List<String> GENRES =
-            Arrays.asList("All", "Action", "Comedy", "Drama", "Sci-Fi", "Horror");
+            com.capstone.eventticketing.util.EventFilter.GENRES_WITH_ALL;
 
     private FragmentHomeBinding binding;
     private HomeViewModel homeViewModel;

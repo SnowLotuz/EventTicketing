@@ -20,7 +20,20 @@ import java.util.Locale;
 public final class EventFilter {
 
     public static final String CATEGORY_ALL = "All";
+    /**
+     * The single source of truth for selectable genres. Every screen that shows
+     * genre chips or a genre dropdown (home, filter sheet, create, edit) reads
+     * from here, so the lists can never drift out of sync — a drift would make
+     * filtering silently return empty results.
+     */
+    public static final java.util.List<String> GENRES = java.util.Arrays.asList(
+            "Action", "Comedy", "Drama", "Sci-Fi", "Horror",
+            "Animation", "Thriller", "Romance");
 
+    /** Genres prefixed with "All" — for filter UIs that include an All option. */
+    public static final java.util.List<String> GENRES_WITH_ALL = java.util.Arrays.asList(
+            CATEGORY_ALL, "Action", "Comedy", "Drama", "Sci-Fi", "Horror",
+            "Animation", "Thriller", "Romance");
     @NonNull public final String query;          // title substring, may be empty
     @NonNull public final String category;       // CATEGORY_ALL or a specific genre
     public final double minPrice;                // inclusive

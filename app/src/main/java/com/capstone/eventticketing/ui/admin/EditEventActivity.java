@@ -26,7 +26,7 @@ public class EditEventActivity extends AppCompatActivity {
     public static final String EXTRA_EVENT_ID = "extra_event_id";
 
     private static final String[] GENRES =
-            {"Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Animation", "Thriller", "Romance"};
+            com.capstone.eventticketing.util.EventFilter.GENRES.toArray(new String[0]);
     private static final SimpleDateFormat DISPLAY_FORMAT =
             new SimpleDateFormat("EEE, dd MMM yyyy", Locale.getDefault());
 

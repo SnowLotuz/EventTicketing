@@ -32,8 +32,8 @@ public class FilterBottomSheet extends BottomSheetDialogFragment {
         void onFilterApplied(@NonNull EventFilter filter);
     }
 
-    private static final List<String> CATEGORIES =
-            Arrays.asList(EventFilter.CATEGORY_ALL, "Music", "Sports", "Theater");
+    private static final List<String> CATEGORIES = EventFilter.GENRES_WITH_ALL;
+
     private static final float PRICE_MAX = 500f;
     private static final SimpleDateFormat DATE_FMT =
             new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());

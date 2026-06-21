@@ -152,12 +152,12 @@ public class SeatMapView extends View {
             int r = rowIndex.get(seat.getRow());
             int c = seat.getColumn() - 1; // columns are 1-based
             float left = rowLabelWidth + c * (seatSize + seatGap);
-            float top = r * (seatSize + seatGap);
+            float top = (r + 1) * (seatSize + seatGap); // +1 leaves room for the column header
             seatRects.put(seat.getSeatId(), new RectF(left, top, left + seatSize, top + seatSize));
         }
 
         contentWidth = (int) (rowLabelWidth + maxColumn * (seatSize + seatGap));
-        contentHeight = (int) (nextRow * (seatSize + seatGap));
+        contentHeight = (int) ((nextRow + 1) * (seatSize + seatGap)); // +1 for the header band
     }
 
     @Override
@@ -165,6 +165,9 @@ public class SeatMapView extends View {
         super.onDraw(canvas);
         canvas.save();
         canvas.concat(transformMatrix);
+
+        // Column number headers (1..maxColumn) across the top.
+        drawColumnHeaders(canvas);
 
         float corner = 6 * getResources().getDisplayMetrics().density;
         Map<String, String> rowLabelDrawn = new HashMap<>();
@@ -184,6 +187,23 @@ public class SeatMapView extends View {
             }
         }
         canvas.restore();
+    }
+
+    /** Draws column numbers (1, 2, … N) above the first row of seats. */
+    private void drawColumnHeaders(@NonNull Canvas canvas) {
+        if (seats.isEmpty()) return;
+        // Find how many columns exist by scanning the computed rects' columns.
+        int maxColumn = 0;
+        for (Seat seat : seats) {
+            if (seat.getColumn() > maxColumn) maxColumn = seat.getColumn();
+        }
+
+        float headerY = (seatSize / 2f) - ((labelPaint.descent() + labelPaint.ascent()) / 2f);
+
+        for (int c = 1; c <= maxColumn; c++) {
+            float centerX = rowLabelWidth + (c - 1) * (seatSize + seatGap) + seatSize / 2f;
+            canvas.drawText(String.valueOf(c), centerX, headerY, labelPaint);
+        }
     }
 
     /** Chooses a seat's fill color from its state relative to the current user. */
