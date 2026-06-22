@@ -33,6 +33,7 @@ public class EventDetailViewModel extends ViewModel {
         this.movieId = movieId;
         loadEvent();
         loadWishlistState();
+        loadReviews();   // populate the reviews list on cold open, not only after submit
     }
 
     public LiveData<Resource<Movie>> getMovie() { return movie; }

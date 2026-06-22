@@ -125,6 +125,15 @@
                 <View android:layout_width="match_parent" android:layout_height="1dp"
                     android:background="@color/slate_200" />
 
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="@color/slate_200" />
+
+                <TextView
+                    android:id="@+id/row_wishlist"
+                    style="@style/AdminSheetAction"
+                    android:text="@string/wishlist_title"
+                    app:drawableStartCompat="@drawable/ic_heart_filled" />
+
                 <TextView
                     android:id="@+id/row_history"
                     style="@style/AdminSheetAction"

@@ -246,9 +246,102 @@ public class MovieRepository {
         return result;
     }
 
+    /**
+     * Counts all movies for the admin KPI. Uses an aggregate count query so it
+     * doesn't download every document.
+     *
+     * @return LiveData emitting Loading then Success(count) or Error.
+     */
+    public LiveData<Resource<Integer>> getMovieCount() {
+        MutableLiveData<Resource<Integer>> result = new MutableLiveData<>();
+        result.setValue(Resource.loading());
+
+        firestore.collection(MOVIES_COLLECTION)
+                .count()
+                .get(com.google.firebase.firestore.AggregateSource.SERVER)
+                .addOnSuccessListener(snapshot ->
+                        result.setValue(Resource.success((int) snapshot.getCount())))
+                .addOnFailureListener(e ->
+                        result.setValue(Resource.error(safeMessage(e, "Failed to count movies."))));
+
+        return result;
+    }
+
     private String currentUid() {
         return firebaseAuth.getCurrentUser() != null
                 ? firebaseAuth.getCurrentUser().getUid() : null;
+    }
+
+    private static final int WHERE_IN_LIMIT = 30;
+
+    /**
+     * Resolves the current user's wishlisted movie IDs into full {@link Movie}
+     * objects for the wishlist screen. Reads the user's wishlist array, then
+     * batch-fetches the referenced movies via {@code whereIn} (chunked to respect
+     * Firestore's limit). Returns an empty list if the wishlist is empty.
+     *
+     * @return LiveData emitting Loading then Success(list) or Error.
+     */
+    public LiveData<Resource<List<Movie>>> getWishlistMovies() {
+        MutableLiveData<Resource<List<Movie>>> result = new MutableLiveData<>();
+        result.setValue(Resource.loading());
+
+        String uid = currentUid();
+        if (uid == null) {
+            result.setValue(Resource.error("Not signed in."));
+            return result;
+        }
+
+        firestore.collection(USERS_COLLECTION).document(uid).get()
+                .addOnSuccessListener(userDoc -> {
+                    @SuppressWarnings("unchecked")
+                    List<String> ids = (List<String>) userDoc.get(FIELD_WISHLIST);
+                    if (ids == null || ids.isEmpty()) {
+                        result.setValue(Resource.success(new ArrayList<>()));
+                        return;
+                    }
+                    resolveWishlistMovies(ids, result);
+                })
+                .addOnFailureListener(e ->
+                        result.setValue(Resource.error(safeMessage(e, "Failed to load wishlist."))));
+
+        return result;
+    }
+
+    /** Batch-fetches movies for the given IDs and emits them, preserving wishlist order. */
+    private void resolveWishlistMovies(@NonNull List<String> ids,
+                                       @NonNull MutableLiveData<Resource<List<Movie>>> result) {
+        List<com.google.android.gms.tasks.Task<com.google.firebase.firestore.QuerySnapshot>> tasks =
+                new ArrayList<>();
+        for (int start = 0; start < ids.size(); start += WHERE_IN_LIMIT) {
+            int end = Math.min(start + WHERE_IN_LIMIT, ids.size());
+            tasks.add(firestore.collection(MOVIES_COLLECTION)
+                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(),
+                            ids.subList(start, end))
+                    .get());
+        }
+
+        com.google.android.gms.tasks.Tasks.whenAllSuccess(tasks)
+                .addOnSuccessListener(snapshots -> {
+                    // Map id -> Movie so we can re-order to match the wishlist array.
+                    java.util.Map<String, Movie> byId = new java.util.HashMap<>();
+                    for (Object snapObj : snapshots) {
+                        com.google.firebase.firestore.QuerySnapshot snap =
+                                (com.google.firebase.firestore.QuerySnapshot) snapObj;
+                        for (Movie m : snap.toObjects(Movie.class)) {
+                            if (m.getMovieId() != null) byId.put(m.getMovieId(), m);
+                        }
+                    }
+                    // Preserve the user's wishlist order; skip any movie since deleted.
+                    List<Movie> ordered = new ArrayList<>();
+                    for (String id : ids) {
+                        Movie m = byId.get(id);
+                        if (m != null) ordered.add(m);
+                    }
+                    result.setValue(Resource.success(ordered));
+                })
+                .addOnFailureListener(e ->
+                        result.setValue(Resource.error(safeMessage(e, "Failed to load wishlist movies."))));
     }
 
     private String safeMessage(@NonNull Exception e, @NonNull String fallback) {

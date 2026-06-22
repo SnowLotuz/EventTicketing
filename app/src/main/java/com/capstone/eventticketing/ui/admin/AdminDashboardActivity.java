@@ -12,6 +12,9 @@ import com.capstone.eventticketing.R;
 import com.capstone.eventticketing.databinding.ActivityAdminDashboardBinding;
 import com.capstone.eventticketing.ui.auth.AuthViewModel;
 import com.capstone.eventticketing.ui.auth.LoginActivity;
+import com.capstone.eventticketing.util.Resource;
+
+import java.util.Locale;
 
 /**
  * Entry point for users with the {@code admin} role. Hosts navigation to event
@@ -22,6 +25,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
     private ActivityAdminDashboardBinding binding;
     private AuthViewModel authViewModel;
+    private DashboardViewModel dashboardViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,9 +34,17 @@ public class AdminDashboardActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         authViewModel = new ViewModelProvider(this).get(AuthViewModel.class);
+        dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
 
         setupToolbar();
         setupActions();
+        observeKpis();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        dashboardViewModel.load();
     }
 
     private void setupToolbar() {
@@ -58,6 +70,31 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         binding.cardCheckin.setOnClickListener(v ->
                 startActivity(new Intent(this, AdminEventsActivity.class)));
+    }
+
+    private void observeKpis() {
+        dashboardViewModel.getMovieCount().observe(this, resource -> {
+            if (resource == null) return;
+            if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
+                binding.tvTotalEvents.setText(String.valueOf(resource.data));
+            } else if (resource.status == Resource.Status.LOADING) {
+                binding.tvTotalEvents.setText("…");
+            } else {
+                binding.tvTotalEvents.setText("—");
+            }
+        });
+
+        dashboardViewModel.getRevenue().observe(this, resource -> {
+            if (resource == null) return;
+            if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
+                binding.tvTotalRevenue.setText(
+                        String.format(Locale.getDefault(), "$%,.2f", resource.data));
+            } else if (resource.status == Resource.Status.LOADING) {
+                binding.tvTotalRevenue.setText("…");
+            } else {
+                binding.tvTotalRevenue.setText("—");
+            }
+        });
     }
 
     private void navigateToLogin() {

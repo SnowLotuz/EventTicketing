@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.capstone.eventticketing.R;
 import com.capstone.eventticketing.data.model.Ticket;
+import com.capstone.eventticketing.data.repository.TicketRepository.TicketWithMovie;
 import com.capstone.eventticketing.databinding.ItemTicketBinding;
 import com.capstone.eventticketing.util.QrGenerator;
 
@@ -18,11 +19,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Renders the user's tickets. Each row shows a small QR thumbnail; tapping a row
- * opens the full-screen scannable QR. Thumbnails are cached by payload to avoid
- * re-encoding on rebind.
+ * Renders the user's tickets. Each row shows the movie title, the seat, a small
+ * QR thumbnail, and check-in status; tapping a row opens the full-screen
+ * scannable QR. Thumbnails are cached by payload to avoid re-encoding on rebind.
  */
-public class TicketAdapter extends ListAdapter<Ticket, TicketAdapter.TicketViewHolder> {
+public class TicketAdapter extends ListAdapter<TicketWithMovie, TicketAdapter.TicketViewHolder> {
 
     public interface OnTicketClickListener {
         void onTicketClick(@NonNull Ticket ticket);
@@ -59,7 +60,11 @@ public class TicketAdapter extends ListAdapter<Ticket, TicketAdapter.TicketViewH
             this.binding = binding;
         }
 
-        void bind(@NonNull Ticket ticket) {
+        void bind(@NonNull TicketWithMovie item) {
+            Ticket ticket = item.ticket;
+
+            binding.tvMovieTitle.setText(item.movieTitle);
+
             binding.tvSeat.setText(binding.getRoot().getContext()
                     .getString(R.string.tickets_seat_prefix, ticket.getSeatNumber()));
 
@@ -87,17 +92,20 @@ public class TicketAdapter extends ListAdapter<Ticket, TicketAdapter.TicketViewH
         }
     }
 
-    private static final DiffUtil.ItemCallback<Ticket> DIFF_CALLBACK =
-            new DiffUtil.ItemCallback<Ticket>() {
+    private static final DiffUtil.ItemCallback<TicketWithMovie> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<TicketWithMovie>() {
                 @Override
-                public boolean areItemsTheSame(@NonNull Ticket oldItem, @NonNull Ticket newItem) {
-                    return oldItem.getTicketId() != null
-                            && oldItem.getTicketId().equals(newItem.getTicketId());
+                public boolean areItemsTheSame(@NonNull TicketWithMovie oldItem,
+                                               @NonNull TicketWithMovie newItem) {
+                    return oldItem.ticket.getTicketId() != null
+                            && oldItem.ticket.getTicketId().equals(newItem.ticket.getTicketId());
                 }
 
                 @Override
-                public boolean areContentsTheSame(@NonNull Ticket oldItem, @NonNull Ticket newItem) {
-                    return oldItem.isCheckedIn() == newItem.isCheckedIn();
+                public boolean areContentsTheSame(@NonNull TicketWithMovie oldItem,
+                                                  @NonNull TicketWithMovie newItem) {
+                    return oldItem.ticket.isCheckedIn() == newItem.ticket.isCheckedIn()
+                            && oldItem.movieTitle.equals(newItem.movieTitle);
                 }
             };
 }

@@ -81,7 +81,7 @@ public class TicketsFragment extends Fragment implements TicketAdapter.OnTicketC
 
         binding.bannerOffline.setVisibility(result.isFromCache ? View.VISIBLE : View.GONE);
 
-        List<Ticket> tickets = result.tickets;
+        List<TicketRepository.TicketWithMovie> tickets = result.tickets;
         if (tickets.isEmpty()) {
             binding.rvTickets.setVisibility(View.GONE);
             binding.layoutEmpty.setVisibility(View.VISIBLE);

@@ -16,6 +16,7 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -41,6 +42,8 @@ public class BookingRepository {
     private static final String FIELD_USER_ID = "userId";
     private static final String FIELD_BOOKING_DATE = "bookingDate";
     private static final int WHERE_IN_LIMIT = 30;
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_FINAL_AMOUNT = "finalAmount";
 
     @NonNull private final FirebaseFirestore firestore;
     @NonNull private final FirebaseAuth firebaseAuth;
@@ -297,5 +300,32 @@ public class BookingRepository {
                 })
                 .addOnFailureListener(e -> result.setValue(Resource.error(
                         e.getMessage() != null ? e.getMessage() : "Failed to load event details.")));
+    }
+
+    /**
+     * Sums {@code finalAmount} across all CONFIRMED bookings for the admin revenue
+     * KPI. Admin-only in practice (enforced by security rules on the read).
+     *
+     * @return LiveData emitting Loading then Success(total) or Error.
+     */
+    public LiveData<Resource<Double>> getTotalRevenue() {
+        MutableLiveData<Resource<Double>> result = new MutableLiveData<>();
+        result.setValue(Resource.loading());
+
+        firestore.collection(BOOKINGS_COLLECTION)
+                .whereEqualTo(FIELD_STATUS, Booking.STATUS_CONFIRMED)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    double total = 0d;
+                    for (com.google.firebase.firestore.DocumentSnapshot doc : snap.getDocuments()) {
+                        Double amount = doc.getDouble(FIELD_FINAL_AMOUNT);
+                        if (amount != null) total += amount;
+                    }
+                    result.setValue(Resource.success(total));
+                })
+                .addOnFailureListener(e -> result.setValue(Resource.error(
+                        e.getMessage() != null ? e.getMessage() : "Failed to load revenue.")));
+
+        return result;
     }
 }

@@ -19,6 +19,7 @@ import com.capstone.eventticketing.R;
 import com.capstone.eventticketing.data.model.User;
 import com.capstone.eventticketing.databinding.FragmentProfileBinding;
 import com.capstone.eventticketing.ui.auth.LoginActivity;
+import com.capstone.eventticketing.ui.wishlist.WishlistActivity;
 import com.capstone.eventticketing.util.Resource;
 
 import java.io.UnsupportedEncodingException;
@@ -51,12 +52,12 @@ public class ProfileFragment extends Fragment {
         binding.cardAvatar.setOnClickListener(v -> showChangeAvatarDialog());
         binding.rowEditProfile.setOnClickListener(v -> showEditNameDialog());
 
-        // Cập nhật Step 15: Chuyển sang màn hình Lịch sử đặt vé
         binding.rowHistory.setOnClickListener(v ->
                 startActivity(new android.content.Intent(requireContext(), BookingHistoryActivity.class)));
 
         binding.rowLogout.setOnClickListener(v -> confirmLogout());
-
+        binding.rowWishlist.setOnClickListener(v ->
+                startActivity(WishlistActivity.newIntent(requireContext())));
         observeViewModel();
     }
 

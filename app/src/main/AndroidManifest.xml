@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".EventTicketingApp"
@@ -91,6 +94,11 @@
 
         <activity
             android:name=".ui.onboarding.OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.EventTicketing" />
+
+        <activity
+            android:name=".ui.wishlist.WishlistActivity"
             android:exported="false"
             android:theme="@style/Theme.EventTicketing" />
 

@@ -7,24 +7,32 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.bumptech.glide.Glide;
 import com.capstone.eventticketing.R;
 import com.capstone.eventticketing.data.model.Movie;
+import com.capstone.eventticketing.data.model.Review;
 import com.capstone.eventticketing.databinding.ActivityEventDetailBinding;
-import com.capstone.eventticketing.util.Resource;
-import com.capstone.eventticketing.ui.seat.SeatSelectionActivity;
 import com.capstone.eventticketing.ui.rating.RatingDialogFragment;
 import com.capstone.eventticketing.ui.rating.RatingViewModel;
+import com.capstone.eventticketing.ui.seat.SeatSelectionActivity;
+import com.capstone.eventticketing.util.Resource;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.text.SimpleDateFormat;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Movie details screen. Pure View: reads the {@code movieId} extra, hands it to
  * {@link EventDetailViewModel} via its Factory, and renders observed state.
+ * Hosts the post-viewing rating prompt (for ENDED movies the user attended) and
+ * gates booking so only NOW_SHOWING movies can proceed to seat selection.
  */
 public class EventDetailActivity extends AppCompatActivity {
 
@@ -35,6 +43,9 @@ public class EventDetailActivity extends AppCompatActivity {
 
     private ActivityEventDetailBinding binding;
     private EventDetailViewModel viewModel;
+
+    /** The movie this screen is showing. Resolved once in onCreate and reused. */
+    private String movieId;
 
     private boolean isWishlisted = false;
     private boolean isDescriptionExpanded = false;
@@ -56,7 +67,7 @@ public class EventDetailActivity extends AppCompatActivity {
         binding = ActivityEventDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        String movieId = getIntent().getStringExtra(EXTRA_EVENT_ID);
+        movieId = getIntent().getStringExtra(EXTRA_EVENT_ID);
         if (movieId == null || movieId.isEmpty()) {
             Toast.makeText(this, R.string.detail_error, Toast.LENGTH_SHORT).show();
             finish();
@@ -69,15 +80,13 @@ public class EventDetailActivity extends AppCompatActivity {
         ratingViewModel = new ViewModelProvider(this).get(RatingViewModel.class);
         observeRating();
 
-        com.google.firebase.auth.FirebaseUser fbUser =
-                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        FirebaseUser fbUser = FirebaseAuth.getInstance().getCurrentUser();
         if (fbUser != null && fbUser.getDisplayName() != null) {
             currentUserName = fbUser.getDisplayName();
         }
 
         reviewAdapter = new ReviewAdapter();
-        binding.rvReviews.setLayoutManager(
-                new androidx.recyclerview.widget.LinearLayoutManager(this));
+        binding.rvReviews.setLayoutManager(new LinearLayoutManager(this));
         binding.rvReviews.setNestedScrollingEnabled(false);
         binding.rvReviews.setAdapter(reviewAdapter);
 
@@ -104,7 +113,8 @@ public class EventDetailActivity extends AppCompatActivity {
         binding.btnBuyTickets.setOnClickListener(v -> {
             Resource<Movie> current = viewModel.getMovie().getValue();
             if (current != null && current.status == Resource.Status.SUCCESS
-                    && current.data != null && current.data.getMovieId() != null) {
+                    && current.data != null && current.data.getMovieId() != null
+                    && Movie.STATUS_NOW_SHOWING.equals(current.data.getStatus())) {
                 startActivity(SeatSelectionActivity.newIntent(this, current.data.getMovieId()));
             }
         });
@@ -130,6 +140,12 @@ public class EventDetailActivity extends AppCompatActivity {
             if (resource == null) return;
             if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
                 renderReviews(resource.data);
+            } else if (resource.status == Resource.Status.ERROR) {
+                // Surface query failures (e.g. a missing composite index) instead
+                // of silently showing an empty reviews list.
+                binding.rvReviews.setVisibility(View.GONE);
+                binding.tvNoReviews.setVisibility(View.VISIBLE);
+                showToast(resource.message);
             }
         });
     }
@@ -177,25 +193,7 @@ public class EventDetailActivity extends AppCompatActivity {
                     DATE_FORMAT.format(movie.getReleaseDate().toDate())));
         }
 
-        if (movie.getRating() != null && movie.getRating().getTotalReviews() > 0) {
-            binding.tvRating.setText(String.format(Locale.getDefault(), "%.1f (%d reviews)",
-                    movie.getRating().getAverageScore(), movie.getRating().getTotalReviews()));
-            binding.icStar.setVisibility(View.VISIBLE);
-            binding.tvRating.setVisibility(View.VISIBLE);
-        } else {
-            binding.tvRating.setText(R.string.detail_no_reviews);
-        }
-
-        if (movie.getRating() != null && movie.getRating().getTotalReviews() > 0) {
-            binding.tvAvgScore.setText(String.format(Locale.getDefault(), "%.1f",
-                    movie.getRating().getAverageScore()));
-            int count = movie.getRating().getTotalReviews();
-            binding.tvReviewCount.setText(getResources().getQuantityString(
-                    R.plurals.review_count, count, count));
-            binding.layoutRatingSummary.setVisibility(View.VISIBLE);
-        } else {
-            binding.layoutRatingSummary.setVisibility(View.GONE);
-        }
+        bindRatingSummary(movie);
 
         if (movie.getSeatMap() != null && movie.getSeatMap().getLowestPrice() > 0) {
             binding.tvPrice.setText(String.format(Locale.getDefault(),
@@ -204,22 +202,59 @@ public class EventDetailActivity extends AppCompatActivity {
             binding.tvPrice.setText(R.string.price_free);
         }
 
+        bindBookingState(movie);
+
+        // ENDED movies prompt the attendee for a post-viewing rating.
         if (movie.isEnded()) {
             ratingViewModel.checkEligibility(movie.getMovieId(), true);
         }
 
-        // ĐÃ SỬA: Thay thế khối Glide bằng hàm loadHero
         loadHero(movie.getPosterUrl());
+    }
+
+    /** Renders the inline rating row and the reviews-section rating summary. */
+    private void bindRatingSummary(@NonNull Movie movie) {
+        boolean hasReviews = movie.getRating() != null && movie.getRating().getTotalReviews() > 0;
+
+        if (hasReviews) {
+            binding.tvRating.setText(String.format(Locale.getDefault(), "%.1f (%d reviews)",
+                    movie.getRating().getAverageScore(), movie.getRating().getTotalReviews()));
+            binding.icStar.setVisibility(View.VISIBLE);
+            binding.tvRating.setVisibility(View.VISIBLE);
+
+            binding.tvAvgScore.setText(String.format(Locale.getDefault(), "%.1f",
+                    movie.getRating().getAverageScore()));
+            int count = movie.getRating().getTotalReviews();
+            binding.tvReviewCount.setText(getResources().getQuantityString(
+                    R.plurals.review_count, count, count));
+            binding.layoutRatingSummary.setVisibility(View.VISIBLE);
+        } else {
+            binding.tvRating.setText(R.string.detail_no_reviews);
+            binding.layoutRatingSummary.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * Gates the Buy CTA: booking is permitted only while the movie is actively
+     * showing. ENDED and COMING_SOON movies remain viewable but cannot be booked,
+     * so the button is disabled and relabeled rather than silently allowing seat
+     * selection.
+     */
+    private void bindBookingState(@NonNull Movie movie) {
+        boolean bookable = Movie.STATUS_NOW_SHOWING.equals(movie.getStatus());
+        binding.btnBuyTickets.setEnabled(bookable);
+        binding.btnBuyTickets.setText(
+                bookable ? R.string.detail_buy_tickets : R.string.detail_not_bookable);
     }
 
     /**
      * Loads the detail hero as two layers: a blurred, center-cropped backdrop
-     * that fills the app bar, and the full, sharp poster fitted on top. Gives an
-     * immersive frame while still showing the entire 2:3 poster. The blur uses a
-     * platform RenderEffect on API 31+ and falls back to the plain cropped image
-     * on older devices.
+     * that fills the app bar, and the full, sharp poster fitted on top. The blur
+     * uses a platform RenderEffect, which is API 31+ only; on older devices the
+     * cropped backdrop plus scrim already reads as an intentional frame, so the
+     * blur is simply skipped. No RenderEffect call is made below API 31.
      */
-    private void loadHero(@androidx.annotation.Nullable String posterUrl) {
+    private void loadHero(@Nullable String posterUrl) {
         // Sharp, whole poster on top.
         Glide.with(this)
                 .load(posterUrl)
@@ -228,31 +263,23 @@ public class EventDetailActivity extends AppCompatActivity {
                 .fitCenter()
                 .into(binding.ivHeroImage);
 
-        // Blurred backdrop behind it.
+        // Blurred backdrop behind it — RenderEffect requires API 31 (S).
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             binding.ivHeroBackdrop.setRenderEffect(
                     android.graphics.RenderEffect.createBlurEffect(
                             60f, 60f, android.graphics.Shader.TileMode.CLAMP));
-            Glide.with(this)
-                    .load(posterUrl)
-                    .placeholder(R.color.slate_900)
-                    .error(R.color.slate_900)
-                    .centerCrop()
-                    .into(binding.ivHeroBackdrop);
-        } else {
-            // Pre-API 31: no RenderEffect. Use the cropped image dimmed by the
-            // scrim as the frame — still reads as an intentional backdrop.
-            binding.ivHeroBackdrop.setRenderEffect(null);
-            Glide.with(this)
-                    .load(posterUrl)
-                    .placeholder(R.color.slate_900)
-                    .error(R.color.slate_900)
-                    .centerCrop()
-                    .into(binding.ivHeroBackdrop);
         }
+
+        // Cropped backdrop image (loaded on all API levels; blur applied above only on 31+).
+        Glide.with(this)
+                .load(posterUrl)
+                .placeholder(R.color.slate_900)
+                .error(R.color.slate_900)
+                .centerCrop()
+                .into(binding.ivHeroBackdrop);
     }
 
-    private void renderReviews(@NonNull java.util.List<com.capstone.eventticketing.data.model.Review> reviews) {
+    private void renderReviews(@NonNull List<Review> reviews) {
         if (reviews.isEmpty()) {
             binding.rvReviews.setVisibility(View.GONE);
             binding.tvNoReviews.setVisibility(View.VISIBLE);
@@ -283,8 +310,8 @@ public class EventDetailActivity extends AppCompatActivity {
     private void observeRating() {
         ratingViewModel.getShouldPrompt().observe(this, shouldPrompt -> {
             if (Boolean.TRUE.equals(shouldPrompt)) {
-                RatingDialogFragment dialog = RatingDialogFragment.newInstance(
-                        getIntent().getStringExtra(EXTRA_EVENT_ID), currentUserName);
+                RatingDialogFragment dialog =
+                        RatingDialogFragment.newInstance(movieId, currentUserName);
                 dialog.setOnReviewSubmittedListener(() -> {
                     viewModel.loadEvent();
                     viewModel.loadReviews();

@@ -2,8 +2,9 @@ package com.capstone.eventticketing.data.model;
 
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.DocumentId;
+import com.google.firebase.firestore.PropertyName;
 
-/** Mirrors a document in the {@code Tickets} collection. */
+/** Mirrors a document in the {@code tickets} collection. */
 public class Ticket {
 
     @DocumentId
@@ -13,7 +14,13 @@ public class Ticket {
     private String userId;
     private String seatNumber;
     private String qrCodeData;
+
+    // Pin the Firestore field name to "isCheckedIn". Without @PropertyName the
+    // mapper strips the "is" prefix from the getter and stores it as "checkedIn",
+    // which diverges from the "isCheckedIn" key queried/written across the app.
+    @PropertyName("isCheckedIn")
     private boolean isCheckedIn;
+
     private Timestamp checkInTime;  // nullable
 
     public Ticket() { }
@@ -46,9 +53,11 @@ public class Ticket {
     public String getQrCodeData() { return qrCodeData; }
     public void setQrCodeData(String qrCodeData) { this.qrCodeData = qrCodeData; }
 
-    // Firestore maps the boolean field "isCheckedIn" via these accessors.
+    @PropertyName("isCheckedIn")
     public boolean isCheckedIn() { return isCheckedIn; }
-    public void setCheckedIn(boolean checkedIn) { isCheckedIn = checkedIn; }
+
+    @PropertyName("isCheckedIn")
+    public void setCheckedIn(boolean checkedIn) { this.isCheckedIn = checkedIn; }
 
     public Timestamp getCheckInTime() { return checkInTime; }
     public void setCheckInTime(Timestamp checkInTime) { this.checkInTime = checkInTime; }

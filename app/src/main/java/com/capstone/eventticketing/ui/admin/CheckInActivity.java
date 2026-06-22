@@ -109,8 +109,8 @@ public class CheckInActivity extends AppCompatActivity {
                 playBeep();
                 break;
             case ALREADY_USED:
-                binding.overlayResult.setBackgroundColor(getColor(R.color.status_error));
-                binding.ivResultIcon.setImageResource(R.drawable.ic_cancel_circle);
+                binding.overlayResult.setBackgroundColor(getColor(R.color.status_warning));
+                binding.ivResultIcon.setImageResource(R.drawable.ic_check_circle);
                 binding.tvResultTitle.setText(R.string.checkin_used);
                 binding.tvResultDetail.setText(alreadyUsedLine(result));
                 vibrate();

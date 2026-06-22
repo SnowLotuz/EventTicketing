@@ -35,14 +35,29 @@
             app:layout_constraintBottom_toBottomOf="parent" />
 
         <TextView
-            android:id="@+id/tv_seat"
+            android:id="@+id/tv_movie_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
+            android:maxLines="1"
+            android:ellipsize="end"
             android:textColor="@color/slate_900"
             android:textSize="17sp"
             android:textStyle="bold"
             app:layout_constraintTop_toTopOf="@id/iv_qr_thumb"
+            app:layout_constraintStart_toEndOf="@id/iv_qr_thumb"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="Dune: Part Two" />
+
+        <TextView
+            android:id="@+id/tv_seat"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/slate_600"
+            android:textSize="14sp"
+            app:layout_constraintTop_toBottomOf="@id/tv_movie_title"
             app:layout_constraintStart_toEndOf="@id/iv_qr_thumb"
             app:layout_constraintEnd_toEndOf="parent"
             tools:text="Seat A1" />
