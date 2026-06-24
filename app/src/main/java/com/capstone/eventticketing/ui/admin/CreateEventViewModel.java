@@ -48,7 +48,10 @@ public class CreateEventViewModel extends ViewModel {
                             String description,
                             String posterUrl,
                             long releaseDateMillis,
-                            String priceStr) {
+                            String priceStr,
+                            String trailerUrl,
+                            boolean blockbuster,
+                            java.util.List<com.capstone.eventticketing.data.model.Actor> actors) {
 
         if (isBlank(title)) { validationError.setValue("Please enter a movie title."); return; }
         if (isBlank(genre)) { validationError.setValue("Please select a genre."); return; }
@@ -74,7 +77,8 @@ public class CreateEventViewModel extends ViewModel {
             return;
         }
 
-        Movie movie = buildMovie(title, genre, durationMinutes, description, posterUrl, releaseDateMillis, basePrice);
+        Movie movie = buildMovie(title, genre, durationMinutes, description, posterUrl,
+                releaseDateMillis, basePrice, trailerUrl, blockbuster, actors);
 
         final double finalBasePrice = basePrice;
 
@@ -121,7 +125,9 @@ public class CreateEventViewModel extends ViewModel {
 
     /** Assembles a fully-populated Movie. Nested objects are never left null. */
     private Movie buildMovie(String title, String genre, int durationMinutes, String description,
-                             @Nullable String posterUrl, long releaseDateMillis, double basePrice) {
+                             @Nullable String posterUrl, long releaseDateMillis, double basePrice,
+                             @Nullable String trailerUrl, boolean blockbuster,
+                             @Nullable java.util.List<com.capstone.eventticketing.data.model.Actor> actors) {
         Movie movie = new Movie();
         movie.setTitle(title.trim());
         movie.setGenre(genre.trim());
@@ -130,6 +136,9 @@ public class CreateEventViewModel extends ViewModel {
         movie.setPosterUrl(posterUrl != null ? posterUrl.trim() : "");
         movie.setReleaseDate(new Timestamp(new Date(releaseDateMillis)));
         movie.setStatus(Movie.STATUS_NOW_SHOWING);
+        movie.setTrailerUrl(trailerUrl != null ? trailerUrl.trim() : "");
+        movie.setBlockbuster(blockbuster);
+        movie.setActors(actors != null ? actors : new java.util.ArrayList<>());
 
         // Nested seatMap with a single base tier
         Movie.SeatMap seatMap = new Movie.SeatMap();

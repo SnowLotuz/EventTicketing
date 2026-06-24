@@ -308,6 +308,32 @@ public class MovieRepository {
         return result;
     }
 
+    /**
+     * Counts BOOKED seats in a movie's {@code seats} subcollection — i.e. tickets
+     * sold. Uses an aggregate count query so it never downloads the 150 seat docs.
+     * Reused by the tickets-sold display and the same-price discount eligibility
+     * check (≤ 30 booked qualifies).
+     *
+     * @return LiveData emitting Loading then Success(count) or Error.
+     */
+    public LiveData<Resource<Integer>> getBookedSeatCount(@NonNull String movieId) {
+        MutableLiveData<Resource<Integer>> result = new MutableLiveData<>();
+        result.setValue(Resource.loading());
+
+        firestore.collection(MOVIES_COLLECTION)
+                .document(movieId)
+                .collection(SEATS_SUBCOLLECTION)
+                .whereEqualTo("status", com.capstone.eventticketing.data.model.SeatStatus.BOOKED)
+                .count()
+                .get(com.google.firebase.firestore.AggregateSource.SERVER)
+                .addOnSuccessListener(snapshot ->
+                        result.setValue(Resource.success((int) snapshot.getCount())))
+                .addOnFailureListener(e ->
+                        result.setValue(Resource.error(safeMessage(e, "Failed to count booked seats."))));
+
+        return result;
+    }
+
     /** Batch-fetches movies for the given IDs and emits them, preserving wishlist order. */
     private void resolveWishlistMovies(@NonNull List<String> ids,
                                        @NonNull MutableLiveData<Resource<List<Movie>>> result) {

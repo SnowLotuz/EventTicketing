@@ -54,6 +54,7 @@ public class EventDetailActivity extends AppCompatActivity {
     private String currentUserName = "";
 
     private ReviewAdapter reviewAdapter;
+    private ActorAdapter actorAdapter; // Thêm adapter cho diễn viên
 
     public static Intent newIntent(@NonNull Context context, @NonNull String movieId) {
         Intent intent = new Intent(context, EventDetailActivity.class);
@@ -89,6 +90,13 @@ public class EventDetailActivity extends AppCompatActivity {
         binding.rvReviews.setLayoutManager(new LinearLayoutManager(this));
         binding.rvReviews.setNestedScrollingEnabled(false);
         binding.rvReviews.setAdapter(reviewAdapter);
+
+        // Khởi tạo Adapter và RecyclerView cho Cast (cuộn ngang)
+        actorAdapter = new ActorAdapter();
+        binding.rvCast.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(
+                this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+        binding.rvCast.setNestedScrollingEnabled(false);
+        binding.rvCast.setAdapter(actorAdapter);
 
         setupToolbar();
         setupListeners();
@@ -146,6 +154,22 @@ public class EventDetailActivity extends AppCompatActivity {
                 binding.rvReviews.setVisibility(View.GONE);
                 binding.tvNoReviews.setVisibility(View.VISIBLE);
                 showToast(resource.message);
+            }
+        });
+
+        // Lắng nghe số lượng ghế đã bán
+        viewModel.getBookedSeatCount().observe(this, resource -> {
+            if (resource == null) return;
+            if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
+                Resource<Movie> m = viewModel.getMovie().getValue();
+                boolean nowShowing = m != null && m.data != null
+                        && Movie.STATUS_NOW_SHOWING.equals(m.data.getStatus());
+                if (nowShowing) {
+                    binding.tvTicketsSold.setVisibility(View.VISIBLE);
+                    binding.tvTicketsSold.setText(getString(R.string.detail_tickets_sold,
+                            resource.data,
+                            com.capstone.eventticketing.util.SeatMapGenerator.CINEMA_CAPACITY));
+                }
             }
         });
     }
@@ -208,6 +232,21 @@ public class EventDetailActivity extends AppCompatActivity {
         if (movie.isEnded()) {
             ratingViewModel.checkEligibility(movie.getMovieId(), true);
         }
+
+        // Cast — show the section only if the movie has actors.
+        java.util.List<com.capstone.eventticketing.data.model.Actor> cast = movie.getActors();
+        boolean hasCast = cast != null && !cast.isEmpty();
+        binding.tvCastLabel.setVisibility(hasCast ? View.VISIBLE : View.GONE);
+        binding.rvCast.setVisibility(hasCast ? View.VISIBLE : View.GONE);
+        if (hasCast) actorAdapter.submitList(cast);
+
+        // Trailer — show the button only if a trailer URL exists.
+        binding.btnTrailer.setVisibility(movie.hasTrailer() ? View.VISIBLE : View.GONE);
+        binding.btnTrailer.setOnClickListener(v -> openTrailer(movie.getTrailerUrl()));
+
+        // Tickets-sold is shown only while NOW_SHOWING (see observer below).
+        boolean showSold = Movie.STATUS_NOW_SHOWING.equals(movie.getStatus());
+        binding.tvTicketsSold.setVisibility(showSold ? View.VISIBLE : View.GONE);
 
         loadHero(movie.getPosterUrl());
     }
@@ -298,6 +337,16 @@ public class EventDetailActivity extends AppCompatActivity {
         } else {
             binding.tvDescription.setMaxLines(4);
             binding.tvReadMore.setText(R.string.detail_read_more);
+        }
+    }
+
+    /** Opens the trailer URL externally (browser / YouTube app). */
+    private void openTrailer(@Nullable String url) {
+        if (url == null || url.trim().isEmpty()) return;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url.trim())));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.detail_trailer_unavailable, Toast.LENGTH_SHORT).show();
         }
     }
 

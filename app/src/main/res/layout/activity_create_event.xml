@@ -37,7 +37,6 @@
             android:paddingTop="16dp"
             android:paddingBottom="32dp">
 
-            <!-- Title -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_title"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -57,7 +56,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Genre dropdown -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_genre"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -78,7 +76,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Duration (minutes) -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_duration"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -100,7 +97,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Description -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_description"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -123,7 +119,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Poster URL -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_poster_url"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -144,7 +139,77 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Release date (date only, opens date picker) -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/til_trailer_url"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/create_hint_trailer_url"
+                app:boxCornerRadiusTopStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusBottomEnd="12dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_trailer_url"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textUri"
+                    android:textColor="@color/slate_900" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.checkbox.MaterialCheckBox
+                android:id="@+id/cb_blockbuster"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/create_blockbuster_label"
+                android:textColor="@color/slate_900"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="@string/create_blockbuster_hint"
+                android:textColor="@color/slate_400"
+                android:textSize="12sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="@string/create_cast_label"
+                android:textColor="@color/slate_900"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:text="@string/create_cast_hint"
+                android:textColor="@color/slate_400"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/container_actors"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_actor"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/create_add_actor"
+                android:textAllCaps="false"
+                app:icon="@drawable/ic_add"
+                app:cornerRadius="12dp" />
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_release_date"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -171,7 +236,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Ticket price. Capacity is fixed at 150 (cinema), so no capacity field. -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/til_price"
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -193,7 +257,6 @@
                     android:textColor="@color/slate_900" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Fixed-capacity note -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

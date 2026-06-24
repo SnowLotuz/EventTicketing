@@ -175,6 +175,21 @@
     <string name="detail_not_bookable">Not available for booking</string>
     <string name="wishlist_title">My Wishlist</string>
     <string name="wishlist_empty">No saved movies yet</string>
+    <string name="create_hint_trailer_url">Trailer URL (optional)</string>
+    <string name="create_blockbuster_label">Mark as Blockbuster</string>
+    <string name="create_blockbuster_hint">Featured in the Must-Watch banner; excluded from same-price discounts.</string>
+    <string name="create_cast_label">Cast</string>
+    <string name="create_cast_hint">Added in billing order. Optional.</string>
+    <string name="create_add_actor">Add Actor</string>
+    <string name="create_hint_actor_name">Actor name</string>
+    <string name="create_hint_actor_url">Actor image URL</string>
+    <string name="detail_cast">Cast</string>
+    <string name="detail_watch_trailer">Watch Trailer</string>
+    <string name="cd_actor_photo">Actor photo</string>
+    <string name="detail_tickets_sold">%1$d of %2$d seats booked</string>
+    <string name="detail_trailer_unavailable">Could not open the trailer link.</string>
+    <string name="tickets_active_label">My Tickets</string>
+    <string name="tickets_used_label">Used</string>
 
     <plurals name="review_count">
         <item quantity="one">· %d review</item>

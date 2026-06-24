@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.capstone.eventticketing.data.model.Ticket;
 import com.capstone.eventticketing.data.repository.TicketRepository;
 import com.capstone.eventticketing.databinding.FragmentTicketsBinding;
-import com.capstone.eventticketing.util.Resource;
 
 import java.util.List;
 
@@ -27,7 +26,9 @@ public class TicketsFragment extends Fragment implements TicketAdapter.OnTicketC
 
     private FragmentTicketsBinding binding;
     private TicketsViewModel viewModel;
-    private TicketAdapter adapter;
+
+    private TicketAdapter adapter;      // Adapter cho vé Active
+    private TicketAdapter usedAdapter;  // Adapter cho vé Used
 
     public TicketsFragment() { super(); }
 
@@ -46,7 +47,13 @@ public class TicketsFragment extends Fragment implements TicketAdapter.OnTicketC
 
         adapter = new TicketAdapter(this);
         binding.rvTickets.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvTickets.setNestedScrollingEnabled(false);
         binding.rvTickets.setAdapter(adapter);
+
+        usedAdapter = new TicketAdapter(this);
+        binding.rvUsedTickets.setLayoutManager(new LinearLayoutManager(requireContext()));
+        binding.rvUsedTickets.setNestedScrollingEnabled(false);
+        binding.rvUsedTickets.setAdapter(usedAdapter);
 
         observeViewModel();
     }
@@ -58,37 +65,66 @@ public class TicketsFragment extends Fragment implements TicketAdapter.OnTicketC
                 case LOADING:
                     binding.shimmerTickets.setVisibility(View.VISIBLE);
                     binding.shimmerTickets.startShimmer();
-                    binding.rvTickets.setVisibility(View.GONE);
+                    binding.scrollTickets.setVisibility(View.GONE);
                     binding.layoutEmpty.setVisibility(View.GONE);
                     break;
                 case SUCCESS:
                     binding.shimmerTickets.stopShimmer();
                     binding.shimmerTickets.setVisibility(View.GONE);
-                    renderTickets(resource.data);
+                    if (resource.data != null) {
+                        binding.bannerOffline.setVisibility(resource.data.isFromCache ? View.VISIBLE : View.GONE);
+                    }
+                    updateEmptyState();
                     break;
                 case ERROR:
                     binding.shimmerTickets.stopShimmer();
                     binding.shimmerTickets.setVisibility(View.GONE);
-                    binding.rvTickets.setVisibility(View.GONE);
+                    binding.scrollTickets.setVisibility(View.GONE);
                     binding.layoutEmpty.setVisibility(View.VISIBLE);
                     break;
             }
         });
+
+        viewModel.getActiveTickets().observe(getViewLifecycleOwner(), tickets -> {
+            if (tickets == null) return;
+            adapter.submitList(tickets);
+
+            boolean empty = tickets.isEmpty();
+            binding.tvActiveLabel.setVisibility(empty ? View.GONE : View.VISIBLE);
+            binding.rvTickets.setVisibility(empty ? View.GONE : View.VISIBLE);
+
+            updateEmptyState();
+        });
+
+        viewModel.getUsedTickets().observe(getViewLifecycleOwner(), tickets -> {
+            if (tickets == null) return;
+            usedAdapter.submitList(tickets);
+
+            boolean empty = tickets.isEmpty();
+            binding.tvUsedLabel.setVisibility(empty ? View.GONE : View.VISIBLE);
+            binding.rvUsedTickets.setVisibility(empty ? View.GONE : View.VISIBLE);
+
+            updateEmptyState();
+        });
     }
 
-    private void renderTickets(@Nullable TicketRepository.TicketResult result) {
-        if (result == null) return;
+    private void updateEmptyState() {
+        List<?> active = viewModel.getActiveTickets().getValue();
+        List<?> used = viewModel.getUsedTickets().getValue();
 
-        binding.bannerOffline.setVisibility(result.isFromCache ? View.VISIBLE : View.GONE);
+        boolean isActiveEmpty = (active == null || active.isEmpty());
+        boolean isUsedEmpty = (used == null || used.isEmpty());
 
-        List<TicketRepository.TicketWithMovie> tickets = result.tickets;
-        if (tickets.isEmpty()) {
-            binding.rvTickets.setVisibility(View.GONE);
+        if (isActiveEmpty && isUsedEmpty) {
             binding.layoutEmpty.setVisibility(View.VISIBLE);
+            if (binding.shimmerTickets.getVisibility() == View.GONE) {
+                binding.scrollTickets.setVisibility(View.GONE);
+            }
         } else {
-            binding.rvTickets.setVisibility(View.VISIBLE);
             binding.layoutEmpty.setVisibility(View.GONE);
-            adapter.submitList(tickets);
+            if (binding.shimmerTickets.getVisibility() == View.GONE) {
+                binding.scrollTickets.setVisibility(View.VISIBLE);
+            }
         }
     }
 

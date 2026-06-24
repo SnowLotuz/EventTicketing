@@ -36,6 +36,9 @@ public class CreateEventActivity extends AppCompatActivity {
     private final Calendar selectedDate = Calendar.getInstance();
     private boolean datePicked = false;
 
+    // Tracks the dynamically inflated actor rows
+    private final java.util.List<View> actorRows = new java.util.ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,6 +51,7 @@ public class CreateEventActivity extends AppCompatActivity {
         setupGenreDropdown();
         setupDatePicker();
         setupSaveButton();
+        setupAddActor();
         observeViewModel();
     }
 
@@ -80,6 +84,46 @@ public class CreateEventActivity extends AppCompatActivity {
         datePicker.show();
     }
 
+    private void setupAddActor() {
+        binding.btnAddActor.setOnClickListener(v -> addActorRow());
+    }
+
+    /** Inflates one actor input row into the container and tracks it for collection/removal. */
+    private void addActorRow() {
+        View row = getLayoutInflater().inflate(
+                R.layout.item_actor_input, binding.containerActors, false);
+
+        row.findViewById(R.id.btn_remove_actor).setOnClickListener(v -> {
+            binding.containerActors.removeView(row);
+            actorRows.remove(row);
+        });
+
+        binding.containerActors.addView(row);
+        actorRows.add(row);
+    }
+
+    /** Reads the dynamic actor rows, in display (billing) order. Rows with a blank
+     * name are skipped, so an empty trailing row never produces a phantom actor. */
+    @NonNull
+    private java.util.List<com.capstone.eventticketing.data.model.Actor> collectActors() {
+        java.util.List<com.capstone.eventticketing.data.model.Actor> actors =
+                new java.util.ArrayList<>();
+        for (View row : actorRows) {
+            com.google.android.material.textfield.TextInputEditText nameEt =
+                    row.findViewById(R.id.et_actor_name);
+            com.google.android.material.textfield.TextInputEditText urlEt =
+                    row.findViewById(R.id.et_actor_url);
+
+            String name = nameEt.getText() != null ? nameEt.getText().toString().trim() : "";
+            String url = urlEt.getText() != null ? urlEt.getText().toString().trim() : "";
+
+            if (!name.isEmpty()) {
+                actors.add(new com.capstone.eventticketing.data.model.Actor(name, url));
+            }
+        }
+        return actors;
+    }
+
     private void setupSaveButton() {
         binding.btnSaveEvent.setOnClickListener(v -> viewModel.createMovie(
                 text(binding.etTitle),
@@ -88,7 +132,10 @@ public class CreateEventActivity extends AppCompatActivity {
                 text(binding.etDescription),
                 text(binding.etPosterUrl),
                 datePicked ? selectedDate.getTimeInMillis() : -1L,
-                text(binding.etPrice)));
+                text(binding.etPrice),
+                text(binding.etTrailerUrl),                    // new
+                binding.cbBlockbuster.isChecked(),             // new
+                collectActors()));                             // new
     }
 
     private void observeViewModel() {

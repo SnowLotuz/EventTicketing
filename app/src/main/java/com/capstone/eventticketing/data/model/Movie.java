@@ -6,6 +6,8 @@ import com.google.firebase.firestore.PropertyName;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Mirrors a document in the Firestore {@code movies} collection. Nested
@@ -32,6 +34,19 @@ public class Movie {
     private String status;
     private SeatMap seatMap;
     private Rating rating;
+
+    // --- New in Milestone 1 ---
+
+    /** Backend-only flag. Set via the create form's checkbox; never shown to users
+     * directly. Drives the "Must-Watch" banner and excludes the movie from
+     * same-price discounts. */
+    private boolean blockbuster;
+
+    /** Optional trailer link (e.g. a YouTube URL). Launched externally on tap. */
+    private String trailerUrl;
+
+    /** Cast in billing order. Never null after construction. */
+    private List<Actor> actors = new ArrayList<>();
 
     /** Required empty constructor for Firestore deserialization. */
     public Movie() { }
@@ -76,6 +91,29 @@ public class Movie {
 
     public Rating getRating() { return rating; }
     public void setRating(Rating rating) { this.rating = rating; }
+
+    // --- Getters & Setters for Milestone 1 fields ---
+
+    @com.google.firebase.firestore.PropertyName("blockbuster")
+    public boolean isBlockbuster() { return blockbuster; }
+
+    @com.google.firebase.firestore.PropertyName("blockbuster")
+    public void setBlockbuster(boolean blockbuster) { this.blockbuster = blockbuster; }
+
+    public String getTrailerUrl() { return trailerUrl; }
+    public void setTrailerUrl(String trailerUrl) { this.trailerUrl = trailerUrl; }
+
+    public List<Actor> getActors() { return actors; }
+
+    public void setActors(List<Actor> actors) {
+        this.actors = (actors != null) ? actors : new ArrayList<>();
+    }
+
+    /** Convenience for UI gating — true when there's at least one trailer link. */
+    @com.google.firebase.firestore.Exclude
+    public boolean hasTrailer() {
+        return trailerUrl != null && !trailerUrl.trim().isEmpty();
+    }
 
     @Exclude
     public boolean isEnded() {

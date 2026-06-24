@@ -43,6 +43,8 @@ public class SeatMapView extends View {
     private float seatSize;
     private float seatGap;
     private float rowLabelWidth;
+    /** Horizontal aisle width inserted after certain columns. */
+    private float aisleWidth;
 
     private static final float MIN_SCALE = 0.5f;
     private static final float MAX_SCALE = 3.0f;
@@ -96,6 +98,7 @@ public class SeatMapView extends View {
         seatSize = 32 * density;
         seatGap = 8 * density;
         rowLabelWidth = 24 * density;
+        aisleWidth = 20 * density; // gap roughly two-thirds of a seat
 
         // Palette — kept literal here so the view is self-contained; these match colors.xml.
         colorAvailable = Color.parseColor("#16A34A"); // seat_available green
@@ -134,6 +137,18 @@ public class SeatMapView extends View {
         invalidate();
     }
 
+    /**
+     * Number of aisles that fall to the LEFT of the given 0-based column.
+     * Cinema layout splits 15 columns into 4 | 7 | 4 blocks: an aisle after
+     * column 4 (0-based index 3) and after column 11 (0-based index 10).
+     */
+    private int aislesBefore(int zeroBasedColumn) {
+        int aisles = 0;
+        if (zeroBasedColumn >= 4) aisles++;   // past the first 4-seat block
+        if (zeroBasedColumn >= 11) aisles++;  // past the middle 7-seat block
+        return aisles;
+    }
+
     /** Builds the content-coordinate rectangle for each seat based on row/column. */
     private void computeSeatRects() {
         seatRects.clear();
@@ -151,12 +166,16 @@ public class SeatMapView extends View {
         for (Seat seat : seats) {
             int r = rowIndex.get(seat.getRow());
             int c = seat.getColumn() - 1; // columns are 1-based
-            float left = rowLabelWidth + c * (seatSize + seatGap);
+
+            float left = rowLabelWidth + c * (seatSize + seatGap)
+                    + aislesBefore(c) * aisleWidth;          // aisle offset
+
             float top = (r + 1) * (seatSize + seatGap); // +1 leaves room for the column header
             seatRects.put(seat.getSeatId(), new RectF(left, top, left + seatSize, top + seatSize));
         }
 
-        contentWidth = (int) (rowLabelWidth + maxColumn * (seatSize + seatGap));
+        contentWidth = (int) (rowLabelWidth + maxColumn * (seatSize + seatGap)
+                + 2 * aisleWidth);
         contentHeight = (int) ((nextRow + 1) * (seatSize + seatGap)); // +1 for the header band
     }
 
@@ -201,7 +220,9 @@ public class SeatMapView extends View {
         float headerY = (seatSize / 2f) - ((labelPaint.descent() + labelPaint.ascent()) / 2f);
 
         for (int c = 1; c <= maxColumn; c++) {
-            float centerX = rowLabelWidth + (c - 1) * (seatSize + seatGap) + seatSize / 2f;
+            float centerX = rowLabelWidth + (c - 1) * (seatSize + seatGap)
+                    + aislesBefore(c - 1) * aisleWidth        // same offset as seats
+                    + seatSize / 2f;
             canvas.drawText(String.valueOf(c), centerX, headerY, labelPaint);
         }
     }

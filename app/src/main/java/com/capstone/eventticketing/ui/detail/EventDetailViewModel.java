@@ -27,6 +27,7 @@ public class EventDetailViewModel extends ViewModel {
     private final MutableLiveData<Resource<Movie>> movie = new MutableLiveData<>();
     private final MutableLiveData<Resource<Boolean>> wishlistState = new MutableLiveData<>();
     private final MutableLiveData<Resource<List<Review>>> reviews = new MutableLiveData<>();
+    private final MutableLiveData<Resource<Integer>> bookedSeatCount = new MutableLiveData<>();
 
     public EventDetailViewModel(@NonNull MovieRepository movieRepository, @NonNull String movieId) {
         this.movieRepository = movieRepository;
@@ -34,15 +35,22 @@ public class EventDetailViewModel extends ViewModel {
         loadEvent();
         loadWishlistState();
         loadReviews();   // populate the reviews list on cold open, not only after submit
+        loadBookedSeatCount(); // --- MỚI: Gọi load số lượng vé đã bán khi khởi tạo ViewModel ---
     }
 
     public LiveData<Resource<Movie>> getMovie() { return movie; }
     public LiveData<Resource<Boolean>> getWishlistState() { return wishlistState; }
     public LiveData<Resource<List<Review>>> getReviews() { return reviews; }
+    public LiveData<Resource<Integer>> getBookedSeatCount() { return bookedSeatCount; }
 
     /** Loads (or reloads, on retry) the movie document. */
     public void loadEvent() {
         forward(movieRepository.getMovieById(movieId), movie);
+    }
+
+    /** Loads the booked-seat count for the tickets-sold display (NOW_SHOWING only). */
+    public void loadBookedSeatCount() {
+        forward(movieRepository.getBookedSeatCount(movieId), bookedSeatCount);
     }
 
     private void loadWishlistState() {
