@@ -190,6 +190,7 @@
     <string name="detail_trailer_unavailable">Could not open the trailer link.</string>
     <string name="tickets_active_label">My Tickets</string>
     <string name="tickets_used_label">Used</string>
+    <string name="home_featured">Featured</string>
 
     <plurals name="review_count">
         <item quantity="one">· %d review</item>

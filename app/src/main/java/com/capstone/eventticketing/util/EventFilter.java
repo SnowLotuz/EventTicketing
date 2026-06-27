@@ -71,6 +71,16 @@ public final class EventFilter {
                 || endDateMillis > 0L;
     }
 
+    /** True when this filter is the default (no query, no genre, no price/date bounds). */
+    public boolean isNone() {
+        return (query == null || query.trim().isEmpty())
+                && (category == null || category.isEmpty() || CATEGORY_ALL.equalsIgnoreCase(category))
+                && minPrice <= 0d
+                && (maxPrice <= 0d || maxPrice == Double.MAX_VALUE)
+                && startDateMillis <= 0L
+                && endDateMillis <= 0L;
+    }
+
     /**
      * Applies all criteria to a source list. Pure: no side effects, returns a
      * new list. Each movie must satisfy every active criterion (AND semantics).
