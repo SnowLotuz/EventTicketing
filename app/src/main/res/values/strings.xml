@@ -191,6 +191,14 @@
     <string name="tickets_active_label">My Tickets</string>
     <string name="tickets_used_label">Used</string>
     <string name="home_featured">Featured</string>
+    <string name="detail_price_format">$%.2f</string>
+    <string name="discussion_label">Discussion</string>
+    <string name="discussion_hint">Add a comment…</string>
+    <string name="discussion_post">Post</string>
+    <string name="discussion_empty">No comments yet. Start the conversation!</string>
+    <string name="discussion_closed">Discussion is closed for ended movies.</string>
+    <string name="discussion_just_now">Just now</string>
+    <string name="discussion_posted">Comment posted</string>
 
     <plurals name="review_count">
         <item quantity="one">· %d review</item>

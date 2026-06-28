@@ -54,7 +54,12 @@ public class EventDetailActivity extends AppCompatActivity {
     private String currentUserName = "";
 
     private ReviewAdapter reviewAdapter;
-    private ActorAdapter actorAdapter; // Thêm adapter cho diễn viên
+    private ActorAdapter actorAdapter;
+
+    // --- MỚI: Thêm các biến cho phần Discussions ---
+    private DiscussionAdapter discussionAdapter;
+    private DiscussionViewModel discussionViewModel;
+    private boolean discussionInitialized = false;
 
     public static Intent newIntent(@NonNull Context context, @NonNull String movieId) {
         Intent intent = new Intent(context, EventDetailActivity.class);
@@ -91,12 +96,19 @@ public class EventDetailActivity extends AppCompatActivity {
         binding.rvReviews.setNestedScrollingEnabled(false);
         binding.rvReviews.setAdapter(reviewAdapter);
 
-        // Khởi tạo Adapter và RecyclerView cho Cast (cuộn ngang)
+        // Khởi tạo Adapter và RecyclerView cho Cast
         actorAdapter = new ActorAdapter();
         binding.rvCast.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(
                 this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
         binding.rvCast.setNestedScrollingEnabled(false);
         binding.rvCast.setAdapter(actorAdapter);
+
+        discussionAdapter = new DiscussionAdapter();
+        binding.rvDiscussion.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this));
+        binding.rvDiscussion.setNestedScrollingEnabled(false);
+        binding.rvDiscussion.setAdapter(discussionAdapter);
+
+        binding.btnPostComment.setOnClickListener(v -> postComment());
 
         setupToolbar();
         setupListeners();
@@ -157,19 +169,26 @@ public class EventDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Lắng nghe số lượng ghế đã bán
         viewModel.getBookedSeatCount().observe(this, resource -> {
             if (resource == null) return;
             if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
                 Resource<Movie> m = viewModel.getMovie().getValue();
-                boolean nowShowing = m != null && m.data != null
-                        && Movie.STATUS_NOW_SHOWING.equals(m.data.getStatus());
+                if (m == null || m.data == null) return;
+                Movie movie = m.data;
+
+                int bookedCount = resource.data;
+
+                // Tickets-sold line (NOW_SHOWING only) — existing behavior.
+                boolean nowShowing = Movie.STATUS_NOW_SHOWING.equals(movie.getStatus());
                 if (nowShowing) {
                     binding.tvTicketsSold.setVisibility(View.VISIBLE);
                     binding.tvTicketsSold.setText(getString(R.string.detail_tickets_sold,
-                            resource.data,
+                            bookedCount,
                             com.capstone.eventticketing.util.SeatMapGenerator.CINEMA_CAPACITY));
                 }
+
+                // Same-price discount — recompute now that the booked count is known.
+                bindDiscountedPrice(movie, bookedCount);
             }
         });
     }
@@ -219,12 +238,15 @@ public class EventDetailActivity extends AppCompatActivity {
 
         bindRatingSummary(movie);
 
+        // Provisional price: show the base price immediately. The booked-count
+        // observer recomputes with any same-price discount once the count loads.
         if (movie.getSeatMap() != null && movie.getSeatMap().getLowestPrice() > 0) {
-            binding.tvPrice.setText(String.format(Locale.getDefault(),
-                    "$%.2f", movie.getSeatMap().getLowestPrice()));
+            binding.tvPrice.setText(String.format(Locale.getDefault(), "$%.2f",
+                    movie.getSeatMap().getLowestPrice()));
         } else {
             binding.tvPrice.setText(R.string.price_free);
         }
+        binding.tvPriceOriginal.setVisibility(View.GONE);
 
         bindBookingState(movie);
 
@@ -249,6 +271,99 @@ public class EventDetailActivity extends AppCompatActivity {
         binding.tvTicketsSold.setVisibility(showSold ? View.VISIBLE : View.GONE);
 
         loadHero(movie.getPosterUrl());
+
+        // --- MỚI: Khởi tạo DiscussionViewModel khi đã có status của movie ---
+        if (!discussionInitialized) {
+            discussionInitialized = true;
+            discussionViewModel = new ViewModelProvider(this,
+                    new DiscussionViewModel.Factory(movie.getMovieId(), movie.getStatus()))
+                    .get(DiscussionViewModel.class);
+            observeDiscussion();
+
+            // Toggle input vs closed-message by status.
+            boolean open = discussionViewModel.isCommentingOpen();
+            binding.tilComment.setVisibility(open ? View.VISIBLE : View.GONE);
+            binding.btnPostComment.setVisibility(open ? View.VISIBLE : View.GONE);
+            binding.tvDiscussionClosed.setVisibility(open ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private void observeDiscussion() {
+        discussionViewModel.getComments().observe(this, resource -> {
+            if (resource == null) return;
+            if (resource.status == Resource.Status.SUCCESS && resource.data != null) {
+                discussionAdapter.submitList(resource.data);
+                boolean empty = resource.data.isEmpty();
+                binding.tvDiscussionEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+                binding.rvDiscussion.setVisibility(empty ? View.GONE : View.VISIBLE);
+            } else if (resource.status == Resource.Status.ERROR) {
+                Toast.makeText(this, resource.message, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        discussionViewModel.getPostState().observe(this, resource -> {
+            if (resource == null) return;
+            switch (resource.status) {
+                case LOADING:
+                    binding.btnPostComment.setEnabled(false);
+                    break;
+                case SUCCESS:
+                    binding.btnPostComment.setEnabled(true);
+                    binding.etComment.setText(""); // list self-updates via the live listener
+                    Toast.makeText(this, R.string.discussion_posted, Toast.LENGTH_SHORT).show();
+                    break;
+                case ERROR:
+                    binding.btnPostComment.setEnabled(true);
+                    Toast.makeText(this, resource.message, Toast.LENGTH_LONG).show();
+                    break;
+            }
+        });
+    }
+
+    // --- MỚI: Hàm xử lý hành  gửi comment ---
+    private void postComment() {
+        if (discussionViewModel == null) return;
+        String text = binding.etComment.getText() != null
+                ? binding.etComment.getText().toString() : "";
+        if (text.trim().isEmpty()) {
+            binding.tilComment.setError(getString(R.string.discussion_empty));
+            return;
+        }
+        binding.tilComment.setError(null);
+        discussionViewModel.postComment(text);
+    }
+
+    /**
+     * Applies the same-price discount to the price display. Computes the tier via
+     * {@link com.capstone.eventticketing.util.PriceTierCalculator} using the movie's
+     * base price, the booked-seat count, and its blockbuster flag. When discounted,
+     * shows the bucket price as primary and the original struck through beside it.
+     */
+    private void bindDiscountedPrice(@NonNull Movie movie, int bookedCount) {
+        double basePrice = (movie.getSeatMap() != null) ? movie.getSeatMap().getLowestPrice() : 0d;
+        if (basePrice <= 0) {
+            binding.tvPrice.setText(R.string.price_free);
+            binding.tvPriceOriginal.setVisibility(View.GONE);
+            return;
+        }
+
+        com.capstone.eventticketing.util.PriceTierCalculator.Result tier =
+                com.capstone.eventticketing.util.PriceTierCalculator.evaluate(
+                        basePrice, bookedCount, movie.isBlockbuster());
+
+        if (tier.discounted) {
+            binding.tvPrice.setText(String.format(Locale.getDefault(), "$%.2f", tier.finalPrice));
+            binding.tvPriceOriginal.setText(
+                    String.format(Locale.getDefault(), "$%.2f", tier.originalPrice));
+            // Strike through the original price.
+            binding.tvPriceOriginal.setPaintFlags(
+                    binding.tvPriceOriginal.getPaintFlags()
+                            | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+            binding.tvPriceOriginal.setVisibility(View.VISIBLE);
+        } else {
+            binding.tvPrice.setText(String.format(Locale.getDefault(), "$%.2f", basePrice));
+            binding.tvPriceOriginal.setVisibility(View.GONE);
+        }
     }
 
     /** Renders the inline rating row and the reviews-section rating summary. */

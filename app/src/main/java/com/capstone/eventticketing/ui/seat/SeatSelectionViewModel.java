@@ -9,8 +9,10 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.annotation.Nullable;
 
 import com.capstone.eventticketing.data.model.Seat;
+import com.capstone.eventticketing.data.model.SeatStatus;
 import com.capstone.eventticketing.data.repository.SeatRepository;
 import com.capstone.eventticketing.util.Resource;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
@@ -40,10 +42,14 @@ public class SeatSelectionViewModel extends ViewModel {
 
     @Nullable private ListenerRegistration seatListener;
 
+    /** The movie's blockbuster flag, loaded once for same-price discount eligibility. */
+    private boolean isBlockbuster = false;
+
     public SeatSelectionViewModel(@NonNull SeatRepository seatRepository, @NonNull String eventId) {
         this.seatRepository = seatRepository;
         this.eventId = eventId;
         startListening();
+        loadMovieFlags();
     }
 
     public LiveData<Resource<List<Seat>>> getSeats() { return seats; }
@@ -52,6 +58,21 @@ public class SeatSelectionViewModel extends ViewModel {
 
     private void startListening() {
         seatListener = seatRepository.listenToSeats(eventId, seats);
+    }
+
+    /** Reads the movie's blockbuster flag once; defaults to false on any failure. */
+    private void loadMovieFlags() {
+        FirebaseFirestore.getInstance()
+                .collection("movies")
+                .document(eventId)
+                .get()
+                .addOnSuccessListener(snap -> {
+                    if (snap.exists()) {
+                        isBlockbuster = Boolean.TRUE.equals(snap.getBoolean("blockbuster"));
+                    }
+                });
+        // On failure we leave isBlockbuster=false; the transaction re-reads the
+        // authoritative flag anyway, so the charge is correct regardless.
     }
 
     /** @return current selected seat IDs, for the custom view's accent rendering. */
@@ -192,5 +213,32 @@ public class SeatSelectionViewModel extends ViewModel {
             }
         }
         return earliest == Long.MAX_VALUE ? 0L : earliest;
+    }
+
+    /** @return the per-seat base price (flat cinema pricing), or 0 if nothing selected. */
+    public double getBasePrice() {
+        for (Seat s : selectedSeats.values()) {
+            return s.getPrice(); // all seats share one price; first is representative
+        }
+        return 0d;
+    }
+
+    /** @return whether the movie is a blockbuster (same-price discount eligibility). */
+    public boolean isBlockbuster() {
+        return isBlockbuster;
+    }
+
+    /**
+     * @return count of currently BOOKED seats, derived from the live snapshot, for
+     * the same-price discount's ≤30 eligibility gate. Returns 0 if no snapshot yet.
+     */
+    public int getBookedCount() {
+        Resource<List<Seat>> r = seats.getValue();
+        if (r == null || r.data == null) return 0;
+        int count = 0;
+        for (Seat s : r.data) {
+            if (SeatStatus.BOOKED.equals(s.getStatus())) count++;
+        }
+        return count;
     }
 }

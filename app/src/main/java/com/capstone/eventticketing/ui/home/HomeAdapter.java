@@ -55,7 +55,7 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // TYPE_HEADER (and any unexpected type) renders as a header.
         return new HeaderVH(ItemHomeHeaderBinding.inflate(inflater, parent, false));
     }
-
+    
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         HomeSection section = sections.get(position);

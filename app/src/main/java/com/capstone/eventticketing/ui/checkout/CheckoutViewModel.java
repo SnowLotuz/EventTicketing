@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.capstone.eventticketing.data.model.Promotion;
 import com.capstone.eventticketing.data.repository.BookingRepository;
 import com.capstone.eventticketing.data.repository.SeatRepository;
+import com.capstone.eventticketing.util.PriceTierCalculator;
 import com.capstone.eventticketing.util.PromoValidator;
 import com.capstone.eventticketing.util.Resource;
 
@@ -28,6 +29,11 @@ public class CheckoutViewModel extends ViewModel {
 
     @NonNull private final String eventId;
     @NonNull private final List<String> seatIds;
+
+    private final double basePrice;          // per-seat base, before same-price discount
+    private final int bookedCount;           // --- MỚI: Track booked seats for transaction ---
+    private final boolean samePriceDiscount; // true if the movie qualifies
+    private final double effectiveSubTotal;  // discounted price × seat count, or base subtotal
     private final double subTotal;
 
     // Applied promo state (null until a valid code is applied).
@@ -43,13 +49,26 @@ public class CheckoutViewModel extends ViewModel {
                              @NonNull SeatRepository seatRepository,
                              @NonNull String eventId,
                              @NonNull List<String> seatIds,
-                             double subTotal) {
+                             double basePrice,
+                             int bookedCount,
+                             boolean isBlockbuster) {
         this.bookingRepository = bookingRepository;
         this.seatRepository = seatRepository;
         this.eventId = eventId;
         this.seatIds = seatIds;
-        this.subTotal = subTotal;
-        this.finalAmount = subTotal;
+        this.basePrice = basePrice;
+        this.bookedCount = bookedCount;      // --- MỚI: Store it ---
+
+        // Same-price discount: evaluate once, on the inputs from the previous screen.
+        PriceTierCalculator.Result tier = PriceTierCalculator.evaluate(
+                basePrice, bookedCount, isBlockbuster);
+        this.samePriceDiscount = tier.discounted;
+
+        double perSeat = tier.discounted ? tier.finalPrice : basePrice;
+        this.effectiveSubTotal = perSeat * seatIds.size();
+
+        this.subTotal = effectiveSubTotal;   // the order's subtotal is the discounted one
+        this.finalAmount = effectiveSubTotal;
         publishTotals();
     }
 
@@ -60,8 +79,20 @@ public class CheckoutViewModel extends ViewModel {
     public double getSubTotal() { return subTotal; }
     @NonNull public List<String> getSeatIds() { return seatIds; }
 
+    public boolean isSamePriceDiscount() { return samePriceDiscount; }
+
+    /** The pre-discount subtotal (base price × seats), for the struck-through display. */
+    public double getOriginalSubTotal() { return basePrice * seatIds.size(); }
+
     /** Validates and applies a promo code, updating the preview totals. */
     public void applyPromo(@Nullable String rawCode) {
+        // Mutual exclusivity: a same-price discount cannot be combined with a promo.
+        if (samePriceDiscount) {
+            promoState.setValue(PromoUiState.error(
+                    "Promo codes can't be combined with this discount."));
+            return;
+        }
+
         if (rawCode == null || rawCode.trim().isEmpty()) {
             promoState.setValue(PromoUiState.error("Enter a promo code."));
             return;
@@ -120,7 +151,8 @@ public class CheckoutViewModel extends ViewModel {
         String promoId = (appliedPromo != null) ? appliedPromo.getPromoId() : null;
         bookingState.setValue(Resource.loading());
 
-        LiveData<Resource<String>> source = bookingRepository.createBooking(eventId, seatIds, promoId);
+        // --- MỚI: Pass bookedCount to the repository ---
+        LiveData<Resource<String>> source = bookingRepository.createBooking(eventId, seatIds, promoId, bookedCount);
         source.observeForever(new Observer<Resource<String>>() {
             @Override
             public void onChanged(Resource<String> resource) {
@@ -176,12 +208,17 @@ public class CheckoutViewModel extends ViewModel {
     public static class Factory implements ViewModelProvider.Factory {
         @NonNull private final String eventId;
         @NonNull private final List<String> seatIds;
-        private final double subTotal;
+        private final double basePrice;
+        private final int bookedCount;
+        private final boolean isBlockbuster;
 
-        public Factory(@NonNull String eventId, @NonNull List<String> seatIds, double subTotal) {
+        public Factory(@NonNull String eventId, @NonNull List<String> seatIds,
+                       double basePrice, int bookedCount, boolean isBlockbuster) {
             this.eventId = eventId;
             this.seatIds = seatIds;
-            this.subTotal = subTotal;
+            this.basePrice = basePrice;
+            this.bookedCount = bookedCount;
+            this.isBlockbuster = isBlockbuster;
         }
 
         @NonNull
@@ -190,7 +227,7 @@ public class CheckoutViewModel extends ViewModel {
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (modelClass.isAssignableFrom(CheckoutViewModel.class)) {
                 return (T) new CheckoutViewModel(new BookingRepository(), new SeatRepository(),
-                        eventId, seatIds, subTotal);
+                        eventId, seatIds, basePrice, bookedCount, isBlockbuster);
             }
             throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
         }

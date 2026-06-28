@@ -8,6 +8,7 @@ import com.capstone.eventticketing.data.model.Booking;
 import com.capstone.eventticketing.data.model.Promotion;
 import com.capstone.eventticketing.data.model.Seat;
 import com.capstone.eventticketing.data.model.SeatStatus;
+import com.capstone.eventticketing.util.PriceTierCalculator;
 import com.capstone.eventticketing.util.PromoValidator;
 import com.capstone.eventticketing.util.Resource;
 import com.google.firebase.auth.FirebaseAuth;
@@ -88,14 +89,16 @@ public class BookingRepository {
     /**
      * Atomically completes a booking for the given seats.
      *
-     * @param eventId   the event being booked.
-     * @param seatIds   the seat IDs the user currently holds.
-     * @param promoId   the validated promo's document ID, or null if none applied.
+     * @param eventId     the event being booked.
+     * @param seatIds     the seat IDs the user currently holds.
+     * @param promoId     the validated promo's document ID, or null if none applied.
+     * @param bookedCount the total number of currently booked seats (for tier evaluation).
      * @return LiveData emitting Loading then Success(bookingId) or Error.
      */
     public LiveData<Resource<String>> createBooking(@NonNull String eventId,
                                                     @NonNull List<String> seatIds,
-                                                    String promoId) {
+                                                    String promoId,
+                                                    int bookedCount) {
         MutableLiveData<Resource<String>> result = new MutableLiveData<>();
         result.setValue(Resource.loading());
 
@@ -149,14 +152,37 @@ public class BookingRepository {
                         promo = pSnap.exists() ? pSnap.toObject(Promotion.class) : null;
                     }
 
+                    // Read the movie for the blockbuster flag (same-price discount eligibility).
+                    DocumentSnapshot eventSnap = transaction.get(eventRef);
+                    boolean isBlockbuster = Boolean.TRUE.equals(eventSnap.getBoolean("blockbuster"));
+
                     // ---------- PHASE 2: VALIDATE / COMPUTE (in memory) ----------
                     double subTotal = 0d;
                     for (Seat s : heldSeats) subTotal += s.getPrice();
 
+                    // Per-seat base price (flat cinema pricing: all seats share one price).
+                    double basePrice = heldSeats.isEmpty() ? 0d : heldSeats.get(0).getPrice();
+
+                    // Same-price discount — evaluated at the point of truth, from the seat price,
+                    // the passed booked count, and the movie's blockbuster flag.
+                    PriceTierCalculator.Result tier =
+                            PriceTierCalculator.evaluate(basePrice, bookedCount, isBlockbuster);
+
                     double discountAmount = 0d;
                     double finalAmount = subTotal;
                     String appliedCode = null;
-                    if (promoRef != null) {
+
+                    if (tier.discounted) {
+                        // Same-price discount owns the price; promos are mutually exclusive.
+                        if (promoRef != null) {
+                            throw new FirebaseFirestoreException(
+                                    "Promo codes can't be combined with this discount.",
+                                    FirebaseFirestoreException.Code.ABORTED);
+                        }
+                        double discountedPerSeat = tier.finalPrice;
+                        finalAmount = discountedPerSeat * heldSeats.size();
+                        discountAmount = subTotal - finalAmount;
+                    } else if (promoRef != null) {
                         PromoValidator.Result vr = PromoValidator.validate(promo, subTotal);
                         if (!vr.valid) {
                             throw new FirebaseFirestoreException(

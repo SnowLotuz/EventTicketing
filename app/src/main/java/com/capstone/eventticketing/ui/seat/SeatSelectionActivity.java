@@ -85,12 +85,16 @@ public class SeatSelectionActivity extends AppCompatActivity
             if (selected == null || selected.isEmpty()) return;
 
             ArrayList<String> seatIds = new ArrayList<>(viewModel.getSelectedSeatIds());
-            double subtotal = viewModel.getSelectedTotal();
             long holdExpiry = viewModel.getEarliestHoldExpiryMillis();
 
             startActivity(CheckoutActivity.newIntent(
-                    this, getIntent().getStringExtra(EXTRA_EVENT_ID),
-                    seatIds, subtotal, holdExpiry));
+                    this,
+                    getIntent().getStringExtra(EXTRA_EVENT_ID),
+                    seatIds,
+                    viewModel.getBasePrice(),
+                    viewModel.getBookedCount(),
+                    viewModel.isBlockbuster(),
+                    holdExpiry));
         });
     }
 

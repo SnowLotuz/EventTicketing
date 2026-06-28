@@ -30,7 +30,9 @@ public class CheckoutActivity extends AppCompatActivity {
 
     public static final String EXTRA_EVENT_ID = "extra_event_id";
     public static final String EXTRA_SEAT_IDS = "extra_seat_ids";
-    public static final String EXTRA_SUBTOTAL = "extra_subtotal";
+    public static final String EXTRA_BASE_PRICE = "extra_base_price";
+    public static final String EXTRA_BOOKED_COUNT = "extra_booked_count";
+    public static final String EXTRA_IS_BLOCKBUSTER = "extra_is_blockbuster";
     public static final String EXTRA_HOLD_EXPIRY = "extra_hold_expiry";
 
     /** Simulated payment-processing duration before the booking transaction runs. */
@@ -42,12 +44,15 @@ public class CheckoutActivity extends AppCompatActivity {
     private boolean bookingCompleted = false;
 
     public static Intent newIntent(@NonNull Context context, @NonNull String eventId,
-                                   @NonNull ArrayList<String> seatIds, double subtotal,
+                                   @NonNull ArrayList<String> seatIds,
+                                   double basePrice, int bookedCount, boolean isBlockbuster,
                                    long holdExpiryMillis) {
         Intent intent = new Intent(context, CheckoutActivity.class);
         intent.putExtra(EXTRA_EVENT_ID, eventId);
         intent.putStringArrayListExtra(EXTRA_SEAT_IDS, seatIds);
-        intent.putExtra(EXTRA_SUBTOTAL, subtotal);
+        intent.putExtra(EXTRA_BASE_PRICE, basePrice);
+        intent.putExtra(EXTRA_BOOKED_COUNT, bookedCount);
+        intent.putExtra(EXTRA_IS_BLOCKBUSTER, isBlockbuster);
         intent.putExtra(EXTRA_HOLD_EXPIRY, holdExpiryMillis);
         return intent;
     }
@@ -60,7 +65,9 @@ public class CheckoutActivity extends AppCompatActivity {
 
         String eventId = getIntent().getStringExtra(EXTRA_EVENT_ID);
         ArrayList<String> seatIds = getIntent().getStringArrayListExtra(EXTRA_SEAT_IDS);
-        double subtotal = getIntent().getDoubleExtra(EXTRA_SUBTOTAL, 0d);
+        double basePrice = getIntent().getDoubleExtra(EXTRA_BASE_PRICE, 0d);
+        int bookedCount = getIntent().getIntExtra(EXTRA_BOOKED_COUNT, 0);
+        boolean isBlockbuster = getIntent().getBooleanExtra(EXTRA_IS_BLOCKBUSTER, false);
         long holdExpiry = getIntent().getLongExtra(EXTRA_HOLD_EXPIRY, 0L);
 
         if (eventId == null || seatIds == null || seatIds.isEmpty()) {
@@ -70,7 +77,7 @@ public class CheckoutActivity extends AppCompatActivity {
         }
 
         viewModel = new ViewModelProvider(this,
-                new CheckoutViewModel.Factory(eventId, seatIds, subtotal))
+                new CheckoutViewModel.Factory(eventId, seatIds, basePrice, bookedCount, isBlockbuster))
                 .get(CheckoutViewModel.class);
 
         binding.tvSeats.setText(getString(R.string.checkout_seats_prefix) + " "
@@ -78,6 +85,16 @@ public class CheckoutActivity extends AppCompatActivity {
 
         setupListeners();
         observeViewModel();
+
+        // --- MỚI: Khóa ô nhập mã Promo nếu đơn hàng đã được áp dụng giảm giá tự động ---
+        if (viewModel.isSamePriceDiscount()) {
+            binding.etPromo.setEnabled(false);
+            binding.tilPromo.setEnabled(false);
+            binding.tvPromoFeedback.setVisibility(View.VISIBLE);
+            binding.tvPromoFeedback.setTextColor(getColor(R.color.slate_600));
+            binding.tvPromoFeedback.setText("Promo codes can't be combined with this discount.");
+        }
+
         startCountdown(holdExpiry);
     }
 
