@@ -241,4 +241,30 @@ public class SeatSelectionViewModel extends ViewModel {
         }
         return count;
     }
+
+    // --- MỚI: Các hàm hiển thị giá đã giảm trên màn hình chọn ghế ---
+
+    /**
+     * @return the discounted total for the current selection, using the same-price
+     * tier rules. Equals {@link #getSelectedTotal()} when no discount applies.
+     */
+    public double getDiscountedTotal() {
+        int count = selectedSeats.size();
+        if (count == 0) return 0d;
+
+        com.capstone.eventticketing.util.PriceTierCalculator.Result tier =
+                com.capstone.eventticketing.util.PriceTierCalculator.evaluate(
+                        getBasePrice(), getBookedCount(), isBlockbuster());
+
+        double perSeat = tier.discounted ? tier.finalPrice : getBasePrice();
+        return perSeat * count;
+    }
+
+    /** @return true if the current selection qualifies for the same-price discount. */
+    public boolean isSelectionDiscounted() {
+        com.capstone.eventticketing.util.PriceTierCalculator.Result tier =
+                com.capstone.eventticketing.util.PriceTierCalculator.evaluate(
+                        getBasePrice(), getBookedCount(), isBlockbuster());
+        return tier.discounted && !selectedSeats.isEmpty();
+    }
 }

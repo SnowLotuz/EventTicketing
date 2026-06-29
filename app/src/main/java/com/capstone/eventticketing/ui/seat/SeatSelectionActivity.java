@@ -136,6 +136,7 @@ public class SeatSelectionActivity extends AppCompatActivity
         if (!hasSelection) {
             binding.tvSelectionSummary.setText(R.string.seat_none_selected);
             binding.tvTotal.setText(String.format(Locale.getDefault(), "$%.2f", 0.0));
+            binding.tvTotalOriginal.setVisibility(View.GONE);   // add this
             return;
         }
 
@@ -146,8 +147,22 @@ public class SeatSelectionActivity extends AppCompatActivity
         }
         String count = selected.size() == 1 ? "1 seat" : selected.size() + " seats";
         binding.tvSelectionSummary.setText(String.format("%s · %s", count, ids));
-        binding.tvTotal.setText(String.format(Locale.getDefault(), "$%.2f",
-                viewModel.getSelectedTotal()));
+
+        // --- MỚI: Hiển thị giá giảm và giá gốc gạch ngang (nếu có) ---
+        if (viewModel.isSelectionDiscounted()) {
+            binding.tvTotal.setText(String.format(Locale.getDefault(), "$%.2f",
+                    viewModel.getDiscountedTotal()));
+            binding.tvTotalOriginal.setText(String.format(Locale.getDefault(), "$%.2f",
+                    viewModel.getSelectedTotal())); // raw sum = original
+            binding.tvTotalOriginal.setPaintFlags(
+                    binding.tvTotalOriginal.getPaintFlags()
+                            | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
+            binding.tvTotalOriginal.setVisibility(View.VISIBLE);
+        } else {
+            binding.tvTotal.setText(String.format(Locale.getDefault(), "$%.2f",
+                    viewModel.getSelectedTotal()));
+            binding.tvTotalOriginal.setVisibility(View.GONE);
+        }
     }
 
     @Override
